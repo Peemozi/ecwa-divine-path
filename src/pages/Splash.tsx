@@ -22,7 +22,7 @@ const Splash = () => {
   }, [navigate]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-primary">
+    <div className="flex min-h-screen items-center justify-center bg-white">
       <div className="animate-scale-in">
         <img 
           src={ecwaLogo} 
