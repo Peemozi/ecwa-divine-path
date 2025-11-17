@@ -1,13 +1,9 @@
-import { CapacitorConfig } from '@capacitor/core';
+import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.b506060ac8cd45dd8934d0e7af5f74a8',
-  appName: 'ecwa-divine-path',
-  webDir: 'dist',
-  server: {
-    url: 'https://b506060a-c8cd-45dd-8934-d0e7af5f74a8.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  }
+  appId: 'com.ecwa.churchapp',
+  appName: 'ECWA HYMNS/SUNDAY SCHOOL APP',
+  webDir: 'dist'
 };
 
 export default config;
