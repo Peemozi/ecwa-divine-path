@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Share2, Bookmark } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 
@@ -44,6 +44,14 @@ const SundaySchoolLesson = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isBookmarked, setIsBookmarked] = useState(false);
+
+  useEffect(() => {
+    // Check payment status on mount
+    const hasPaidAccess = false; // Replace with actual backend check
+    if (!hasPaidAccess) {
+      navigate("/payment");
+    }
+  }, [navigate]);
 
   // TODO: Replace with actual API call to fetch lesson by ID
   const lesson = mockLessonData;
