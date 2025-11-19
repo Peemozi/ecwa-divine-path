@@ -24,9 +24,9 @@ const Payment = () => {
       setIsSuccess(true);
       toast.success("Payment successful!");
       
-      // Redirect to Sunday School lesson after 2 seconds
+      // Redirect to Sunday School after 2 seconds
       setTimeout(() => {
-        navigate("/sunday-school-lesson/46");
+        navigate("/sunday-school");
       }, 2000);
     } catch (error) {
       toast.error("Payment failed. Please try again.");
@@ -46,14 +46,14 @@ const Payment = () => {
 
         <h2 className="mb-2 text-2xl font-bold">Payment Successful!</h2>
         <p className="mb-8 text-center text-muted-foreground">
-          You now have full access to all Sunday School manuals
+          You now have full access to all Sunday School lessons
         </p>
 
         <Button 
           className="h-12 w-full max-w-md"
-          onClick={() => navigate("/manuals")}
+          onClick={() => navigate("/sunday-school")}
         >
-          View Your Manuals
+          View Sunday School Lessons
         </Button>
       </div>
     );
@@ -67,7 +67,7 @@ const Payment = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/manuals")}
+            onClick={() => navigate("/dashboard")}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Lock, ChevronRight } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { useEffect } from "react";
 
 // Mock data - replace with backend API call
 const mockLessons = [
@@ -38,6 +39,13 @@ const hasPaidAccess = true; // Replace with actual payment check from backend
 
 const SundaySchool = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check payment status on mount
+    if (!hasPaidAccess) {
+      navigate("/payment");
+    }
+  }, [navigate]);
 
   const handleLessonClick = (lesson: typeof mockLessons[0]) => {
     if (hasPaidAccess || lesson.isPaid) {

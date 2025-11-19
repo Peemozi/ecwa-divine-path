@@ -75,7 +75,10 @@ const Dashboard = () => {
         {/* Sunday School of the Week */}
         <Card 
           className="animate-fade-in cursor-pointer transition-all hover:shadow-lg border-accent/30 bg-gradient-to-br from-accent/10 to-transparent"
-          onClick={() => navigate(`/sunday-school-lesson/${mockWeeklyLesson.number}`)}
+          onClick={() => {
+            const hasPaid = false; // Replace with actual backend check
+            navigate(hasPaid ? `/sunday-school-lesson/${mockWeeklyLesson.number}` : "/payment");
+          }}
         >
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
@@ -154,13 +157,13 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-              <div className="text-center shrink-0">
-                <p className="text-2xl font-bold text-primary">24</p>
-                <p className="text-xs text-muted-foreground">NOV</p>
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold shrink-0">
+                50
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-foreground">Sunday Service</p>
-                <p className="text-sm text-muted-foreground">9:00 AM - Main Auditorium</p>
+                <p className="text-xs text-muted-foreground mb-1">Next Week's Lesson</p>
+                <p className="font-semibold text-foreground">THE POWER OF FORGIVENESS</p>
+                <p className="text-xs text-muted-foreground">Matthew 18:21-35</p>
               </div>
             </div>
           </CardContent>
