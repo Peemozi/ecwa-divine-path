@@ -7,8 +7,12 @@ import Splash from "./pages/Splash";
 import Auth from "./pages/Auth";
 import VerifyToken from "./pages/VerifyToken";
 import Dashboard from "./pages/Dashboard";
+import SundaySchool from "./pages/SundaySchool";
+import SundaySchoolLesson from "./pages/SundaySchoolLesson";
 import Hymns from "./pages/Hymns";
 import HymnDetail from "./pages/HymnDetail";
+import Bible from "./pages/Bible";
+import MenuPage from "./pages/MenuPage";
 import Manuals from "./pages/Manuals";
 import Payment from "./pages/Payment";
 import Profile from "./pages/Profile";
@@ -27,8 +31,12 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/verify-token" element={<VerifyToken />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/sunday-school" element={<SundaySchool />} />
+          <Route path="/sunday-school-lesson/:id" element={<SundaySchoolLesson />} />
           <Route path="/hymns" element={<Hymns />} />
           <Route path="/hymns/:id" element={<HymnDetail />} />
+          <Route path="/bible" element={<Bible />} />
+          <Route path="/menu" element={<MenuPage />} />
           <Route path="/manuals" element={<Manuals />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/profile" element={<Profile />} />
