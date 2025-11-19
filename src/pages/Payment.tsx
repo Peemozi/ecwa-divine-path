@@ -23,6 +23,11 @@ const Payment = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       setIsSuccess(true);
       toast.success("Payment successful!");
+      
+      // Redirect to Sunday School lesson after 2 seconds
+      setTimeout(() => {
+        navigate("/sunday-school-lesson/46");
+      }, 2000);
     } catch (error) {
       toast.error("Payment failed. Please try again.");
     } finally {
