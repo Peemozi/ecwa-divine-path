@@ -8,31 +8,26 @@ import { useEffect } from "react";
 
 // Mock data - replace with backend API call
 const mockLessons = [
-  {
-    id: 46,
-    number: 46,
-    topic: "LOVE OF MONEY: AN END TIME CANKERWORM",
-    texts: "2 Timothy 3:1–5, 1 Timothy 6:6–10",
-    isPaid: true,
-    isCurrentWeek: true
-  },
-  {
-    id: 45,
-    number: 45,
-    topic: "LIVING IN THE END TIMES",
-    texts: "Matthew 24:1-14",
-    isPaid: true,
-    isCurrentWeek: false
-  },
-  {
-    id: 44,
-    number: 44,
-    topic: "THE POWER OF PRAYER",
-    texts: "James 5:13-18",
-    isPaid: false,
-    isCurrentWeek: false
-  },
-  // Add more lessons as needed
+  { id: 1, number: 1, topic: "Love of Money: An End-Time Cankerworm", texts: "1 Timothy 6:6–10, 2 Timothy 3:1–5", isCurrentWeek: true },
+  { id: 2, number: 2, topic: "Faithfulness in a Corrupt World", texts: "Daniel 6:1-10, Proverbs 28:20", isCurrentWeek: false },
+  { id: 3, number: 3, topic: "Living by the Spirit", texts: "Galatians 5:16-25, Romans 8:1-14", isCurrentWeek: false },
+  { id: 4, number: 4, topic: "Christian Conduct in the Last Days", texts: "2 Timothy 3:1-5, 1 Peter 4:7-11", isCurrentWeek: false },
+  { id: 5, number: 5, topic: "The Power of Prayer", texts: "James 5:13-18, Matthew 7:7-11", isCurrentWeek: false },
+  { id: 6, number: 6, topic: "Walking in Holiness", texts: "1 Peter 1:13-16, Hebrews 12:14", isCurrentWeek: false },
+  { id: 7, number: 7, topic: "Stewardship and Responsibility", texts: "Matthew 25:14-30, Luke 12:42-48", isCurrentWeek: false },
+  { id: 8, number: 8, topic: "Overcoming Temptation", texts: "1 Corinthians 10:13, James 1:12-15", isCurrentWeek: false },
+  { id: 9, number: 9, topic: "Spiritual Growth and Maturity", texts: "2 Peter 3:18, Ephesians 4:11-16", isCurrentWeek: false },
+  { id: 10, number: 10, topic: "The Believer's Hope in Christ", texts: "1 Peter 1:3-9, Romans 8:18-25", isCurrentWeek: false },
+  { id: 11, number: 11, topic: "Christian Giving and Sacrifice", texts: "2 Corinthians 9:6-15, Malachi 3:8-10", isCurrentWeek: false },
+  { id: 12, number: 12, topic: "Evangelism and Soul Winning", texts: "Matthew 28:18-20, Acts 1:8", isCurrentWeek: false },
+  { id: 13, number: 13, topic: "God's Faithfulness in Trials", texts: "1 Corinthians 10:13, James 1:2-4", isCurrentWeek: false },
+  { id: 14, number: 14, topic: "The Fruit of the Spirit", texts: "Galatians 5:22-23, John 15:1-8", isCurrentWeek: false },
+  { id: 15, number: 15, topic: "The Believer's Identity in Christ", texts: "2 Corinthians 5:17, Ephesians 1:3-14", isCurrentWeek: false },
+  { id: 16, number: 16, topic: "Victory Over Sin", texts: "Romans 6:1-14, 1 John 1:5-10", isCurrentWeek: false },
+  { id: 17, number: 17, topic: "Understanding God's Purpose", texts: "Romans 8:28, Jeremiah 29:11", isCurrentWeek: false },
+  { id: 18, number: 18, topic: "Kingdom Living", texts: "Matthew 6:33, Romans 14:17", isCurrentWeek: false },
+  { id: 19, number: 19, topic: "Living by Faith", texts: "Hebrews 11:1-6, Habakkuk 2:4", isCurrentWeek: false },
+  { id: 20, number: 20, topic: "Hope of Eternal Glory", texts: "Colossians 3:1-4, Revelation 21:1-7", isCurrentWeek: false },
 ];
 
 const hasPaidAccess = localStorage.getItem("sundaySchoolPaid") === "true";
@@ -49,11 +44,7 @@ const SundaySchool = () => {
   }, [navigate]);
 
   const handleLessonClick = (lesson: typeof mockLessons[0]) => {
-    if (hasPaidAccess || lesson.isPaid) {
-      navigate(`/sunday-school-lesson/${lesson.id}`);
-    } else {
-      navigate("/payment");
-    }
+    navigate(`/sunday-school-lesson/${lesson.id}`);
   };
 
   return (
@@ -120,9 +111,6 @@ const SundaySchool = () => {
                         <Badge variant="secondary" className="bg-accent/20 text-accent-foreground text-xs">
                           This Week
                         </Badge>
-                      )}
-                      {!hasPaidAccess && !lesson.isPaid && (
-                        <Lock className="h-4 w-4 text-muted-foreground" />
                       )}
                     </div>
                     <h3 className="font-semibold text-foreground mb-1 leading-tight">
