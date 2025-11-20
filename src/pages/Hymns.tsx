@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Search } from "lucide-react";
+import BottomNav from "@/components/BottomNav";
 
 const mockHymns = [
   { id: 1, number: 1, title: "Holy, Holy, Holy", preview: "Holy, holy, holy! Lord God Almighty!", language: "EN" },
@@ -29,7 +30,7 @@ const Hymns = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b bg-card px-4 py-3">
         <div className="mx-auto flex max-w-4xl items-center gap-3">
@@ -101,6 +102,8 @@ const Hymns = () => {
           ))
         )}
       </div>
+
+      <BottomNav />
     </div>
   );
 };

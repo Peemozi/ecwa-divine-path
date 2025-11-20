@@ -21,12 +21,16 @@ const Payment = () => {
       // });
       
       await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Store payment success in localStorage
+      localStorage.setItem("sundaySchoolPaid", "true");
+      
       setIsSuccess(true);
       toast.success("Payment successful!");
       
-      // Redirect to Sunday School after 2 seconds
+      // Redirect to Sunday School lesson after 2 seconds
       setTimeout(() => {
-        navigate("/sunday-school");
+        navigate("/sunday-school-lesson/46");
       }, 2000);
     } catch (error) {
       toast.error("Payment failed. Please try again.");
@@ -51,7 +55,7 @@ const Payment = () => {
 
         <Button 
           className="h-12 w-full max-w-md"
-          onClick={() => navigate("/sunday-school")}
+          onClick={() => navigate("/sunday-school-lesson/46")}
         >
           View Sunday School Lessons
         </Button>

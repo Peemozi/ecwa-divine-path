@@ -76,7 +76,7 @@ const Dashboard = () => {
         <Card 
           className="animate-fade-in cursor-pointer transition-all hover:shadow-lg border-accent/30 bg-gradient-to-br from-accent/10 to-transparent"
           onClick={() => {
-            const hasPaid = false; // Replace with actual backend check
+            const hasPaid = localStorage.getItem("sundaySchoolPaid") === "true";
             navigate(hasPaid ? `/sunday-school-lesson/${mockWeeklyLesson.number}` : "/payment");
           }}
         >
