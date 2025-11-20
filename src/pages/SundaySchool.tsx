@@ -35,14 +35,15 @@ const mockLessons = [
   // Add more lessons as needed
 ];
 
-const hasPaidAccess = true; // Replace with actual payment check from backend
+const hasPaidAccess = localStorage.getItem("sundaySchoolPaid") === "true";
 
 const SundaySchool = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
     // Check payment status on mount
-    if (!hasPaidAccess) {
+    const hasPaid = localStorage.getItem("sundaySchoolPaid") === "true";
+    if (!hasPaid) {
       navigate("/payment");
     }
   }, [navigate]);

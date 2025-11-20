@@ -47,7 +47,7 @@ const SundaySchoolLesson = () => {
 
   useEffect(() => {
     // Check payment status on mount
-    const hasPaidAccess = false; // Replace with actual backend check
+    const hasPaidAccess = localStorage.getItem("sundaySchoolPaid") === "true";
     if (!hasPaidAccess) {
       navigate("/payment");
     }
