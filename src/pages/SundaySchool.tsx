@@ -2,9 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Lock, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Lock, ChevronRight, Search } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Mock data - replace with backend API call
 const mockLessons = [
@@ -34,6 +35,7 @@ const hasPaidAccess = localStorage.getItem("sundaySchoolPaid") === "true";
 
 const SundaySchool = () => {
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     // Check payment status on mount
@@ -46,6 +48,11 @@ const SundaySchool = () => {
   const handleLessonClick = (lesson: typeof mockLessons[0]) => {
     navigate(`/sunday-school-lesson/${lesson.id}`);
   };
+
+  const filteredLessons = mockLessons.filter(lesson => 
+    lesson.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    lesson.texts.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -89,10 +96,31 @@ const SundaySchool = () => {
           </Card>
         )}
 
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search lessons..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12"
+            />
+          </div>
+        </div>
+
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-4">ALL LESSONS</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-4">
+            {searchQuery ? `SEARCH RESULTS (${filteredLessons.length})` : 'ALL LESSONS'}
+          </h2>
           
-          {mockLessons.map((lesson) => (
+          {filteredLessons.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">No lessons found matching "{searchQuery}"</p>
+            </Card>
+          ) : (
+            filteredLessons.map((lesson) => (
             <Card
               key={lesson.id}
               className={`cursor-pointer transition-all hover:shadow-md ${
@@ -124,7 +152,8 @@ const SundaySchool = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))
+          )}
         </div>
       </main>
 

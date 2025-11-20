@@ -14,27 +14,33 @@ const Payment = () => {
     setIsProcessing(true);
     
     try {
-      // TODO: Replace with actual payment integration
-      // const response = await fetch('https://api.example.com/v1/payments/create-session', {
-      //   method: 'POST',
-      //   body: JSON.stringify({ amount: 5000, currency: 'NGN' })
-      // });
+      // Initialize Paystack payment
+      const handler = (window as any).PaystackPop.setup({
+        key: 'pk_test_xxxxxxxxxxxx', // Replace with your Paystack public key
+        email: 'user@example.com', // Replace with actual user email
+        amount: 500000, // Amount in kobo (₦5,000)
+        currency: 'NGN',
+        ref: 'SS_' + Math.floor((Math.random() * 1000000000) + 1),
+        callback: function(response: any) {
+          // Payment successful
+          localStorage.setItem("sundaySchoolPaid", "true");
+          setIsSuccess(true);
+          toast.success("Payment successful!");
+          
+          // Redirect to Sunday School lessons list after 2 seconds
+          setTimeout(() => {
+            navigate("/sunday-school");
+          }, 2000);
+        },
+        onClose: function() {
+          toast.error("Payment cancelled");
+          setIsProcessing(false);
+        }
+      });
       
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Store payment success in localStorage
-      localStorage.setItem("sundaySchoolPaid", "true");
-      
-      setIsSuccess(true);
-      toast.success("Payment successful!");
-      
-      // Redirect to Sunday School lessons list after 2 seconds
-      setTimeout(() => {
-        navigate("/sunday-school");
-      }, 2000);
+      handler.openIframe();
     } catch (error) {
       toast.error("Payment failed. Please try again.");
-    } finally {
       setIsProcessing(false);
     }
   };
