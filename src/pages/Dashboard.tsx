@@ -122,7 +122,10 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 gap-4 animate-fade-in">
           <Card 
             className="cursor-pointer transition-all hover:shadow-md"
-            onClick={() => navigate("/sunday-school")}
+            onClick={() => {
+              const hasPaid = localStorage.getItem("sundaySchoolPaid") === "true";
+              navigate(hasPaid ? "/sunday-school" : "/payment");
+            }}
           >
             <CardContent className="p-6 text-center">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-accent/20">

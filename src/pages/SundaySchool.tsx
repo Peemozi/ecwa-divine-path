@@ -31,11 +31,10 @@ const mockLessons = [
   { id: 20, number: 20, topic: "Hope of Eternal Glory", texts: "Colossians 3:1-4, Revelation 21:1-7", isCurrentWeek: false },
 ];
 
-const hasPaidAccess = localStorage.getItem("sundaySchoolPaid") === "true";
-
 const SundaySchool = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const hasPaidAccess = localStorage.getItem("sundaySchoolPaid") === "true";
 
   useEffect(() => {
     // Check payment status on mount
