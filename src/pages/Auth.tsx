@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,11 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Reset payment status when visiting auth page
+    localStorage.setItem("sundaySchoolPaid", "false");
+  }, []);
 
   const handleSendToken = async (e: React.FormEvent) => {
     e.preventDefault();
