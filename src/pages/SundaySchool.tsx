@@ -77,83 +77,87 @@ const SundaySchool = () => {
 
       {/* Main Content */}
       <main className="mx-auto max-w-4xl p-4">
-        {!hasPaidAccess && (
-          <Card className="mb-6 animate-fade-in bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20">
-            <CardContent className="p-6 text-center">
-              <Lock className="h-12 w-12 mx-auto mb-4 text-primary" />
-              <h2 className="text-xl font-bold mb-2 text-foreground">Unlock All Lessons</h2>
-              <p className="text-muted-foreground mb-4">
-                Get full access to all Sunday School lessons and study materials
-              </p>
-              <Button 
-                className="w-full"
-                onClick={() => navigate("/payment")}
-              >
-                Buy Full Access - ₦5,000
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search lessons..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-4">
-            {searchQuery ? `SEARCH RESULTS (${filteredLessons.length})` : 'ALL LESSONS'}
-          </h2>
-          
-          {filteredLessons.length === 0 ? (
-            <Card className="p-8 text-center">
-              <p className="text-muted-foreground">No lessons found matching "{searchQuery}"</p>
-            </Card>
-          ) : (
-            filteredLessons.map((lesson) => (
-            <Card
-              key={lesson.id}
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                lesson.isCurrentWeek ? "border-accent/50 bg-accent/5" : ""
-              }`}
-              onClick={() => handleLessonClick(lesson)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold">
-                    {lesson.number}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {lesson.isCurrentWeek && (
-                        <Badge variant="secondary" className="bg-accent/20 text-accent-foreground text-xs">
-                          This Week
-                        </Badge>
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-1 leading-tight">
-                      {lesson.topic}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {lesson.texts}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-                </div>
+        {!hasPaidAccess ? (
+          <>
+            <Card className="mb-6 animate-fade-in bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20">
+              <CardContent className="p-6 text-center">
+                <Lock className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <h2 className="text-xl font-bold mb-2 text-foreground">Unlock All Lessons</h2>
+                <p className="text-muted-foreground mb-4">
+                  Get full access to all Sunday School lessons and study materials
+                </p>
+                <Button 
+                  className="w-full"
+                  onClick={() => navigate("/payment")}
+                >
+                  Buy Full Access - ₦5,000
+                </Button>
               </CardContent>
             </Card>
-            ))
-          )}
-        </div>
+          </>
+        ) : (
+          <>
+            {/* Search Bar */}
+            <div className="mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search lessons..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-12"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground mb-4">
+                {searchQuery ? `SEARCH RESULTS (${filteredLessons.length})` : 'ALL LESSONS'}
+              </h2>
+              
+              {filteredLessons.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <p className="text-muted-foreground">No lessons found matching "{searchQuery}"</p>
+                </Card>
+              ) : (
+                filteredLessons.map((lesson) => (
+                <Card
+                  key={lesson.id}
+                  className={`cursor-pointer transition-all hover:shadow-md ${
+                    lesson.isCurrentWeek ? "border-accent/50 bg-accent/5" : ""
+                  }`}
+                  onClick={() => handleLessonClick(lesson)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold">
+                        {lesson.number}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {lesson.isCurrentWeek && (
+                            <Badge variant="secondary" className="bg-accent/20 text-accent-foreground text-xs">
+                              This Week
+                            </Badge>
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-foreground mb-1 leading-tight">
+                          {lesson.topic}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {lesson.texts}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                    </div>
+                  </CardContent>
+                </Card>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </main>
 
       <BottomNav />
