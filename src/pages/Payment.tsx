@@ -122,6 +122,30 @@ const Payment = () => {
               {isProcessing ? "Processing..." : "Pay with Paystack"}
             </Button>
 
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Test Mode</span>
+              </div>
+            </div>
+
+            <Button 
+              variant="outline"
+              className="h-12 w-full text-base font-semibold"
+              onClick={() => {
+                localStorage.setItem("sundaySchoolPaid", "true");
+                setIsSuccess(true);
+                toast.success("Test payment successful!");
+                setTimeout(() => {
+                  navigate("/sunday-school");
+                }, 2000);
+              }}
+            >
+              Skip Payment (Test Mode)
+            </Button>
+
             <p className="text-center text-xs text-muted-foreground">
               Secure payment powered by Paystack
             </p>
