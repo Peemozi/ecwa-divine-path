@@ -77,7 +77,7 @@ const Dashboard = () => {
           className="animate-fade-in cursor-pointer transition-all hover:shadow-lg border-accent/30 bg-gradient-to-br from-accent/10 to-transparent"
           onClick={() => {
             const hasPaid = localStorage.getItem("sundaySchoolPaid") === "true";
-            navigate(hasPaid ? `/sunday-school-lesson/${mockWeeklyLesson.number}` : "/payment");
+            navigate(hasPaid ? "/manuals/sunday-school/years" : "/payment");
           }}
         >
           <CardHeader>
@@ -124,7 +124,7 @@ const Dashboard = () => {
             className="cursor-pointer transition-all hover:shadow-md"
             onClick={() => {
               const hasPaid = localStorage.getItem("sundaySchoolPaid") === "true";
-              navigate(hasPaid ? "/sunday-school" : "/payment");
+              navigate(hasPaid ? "/manuals/sunday-school/years" : "/payment");
             }}
           >
             <CardContent className="p-6 text-center">

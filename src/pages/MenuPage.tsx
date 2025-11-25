@@ -8,7 +8,8 @@ import {
   HelpCircle, 
   Info,
   LogOut,
-  ChevronRight 
+  ChevronRight,
+  History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
@@ -33,6 +34,11 @@ const MenuPage = () => {
       icon: User,
       label: "Profile",
       action: () => navigate("/profile"),
+    },
+    {
+      icon: History,
+      label: "Quiz History",
+      action: () => navigate("/quiz-history"),
     },
     {
       icon: CreditCard,

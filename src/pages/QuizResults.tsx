@@ -1,3 +1,4 @@
+import React from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,29 @@ const QuizResults = () => {
   const { type, year, lessonId } = useParams();
   
   const { answers, quiz } = location.state || { answers: {}, quiz: { questions: [] } };
+
+  // Save quiz result to history
+  React.useEffect(() => {
+    if (quiz.questions.length > 0) {
+      const history = localStorage.getItem("quizHistory");
+      const quizHistory = history ? JSON.parse(history) : [];
+      
+      const newAttempt = {
+        id: `${type}-${year}-${lessonId}-${Date.now()}`,
+        type: type || "",
+        year: year || "",
+        lessonId: lessonId || "",
+        lessonTitle: quiz.title || `Lesson ${lessonId}`,
+        score: correctCount,
+        total: quiz.questions.length,
+        percentage: Math.round((correctCount / quiz.questions.length) * 100),
+        date: new Date().toISOString(),
+      };
+      
+      quizHistory.push(newAttempt);
+      localStorage.setItem("quizHistory", JSON.stringify(quizHistory));
+    }
+  }, []);
 
   // Calculate score
   let correctCount = 0;
