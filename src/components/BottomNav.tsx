@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Book, Music, BookOpen, Menu } from "lucide-react";
+import { Home, FileText, Music, HelpCircle, Menu } from "lucide-react";
 
 const BottomNav = () => {
   const navigate = useNavigate();
@@ -7,9 +7,9 @@ const BottomNav = () => {
 
   const tabs = [
     { path: "/dashboard", icon: Home, label: "Home" },
-    { path: "/sunday-school", icon: BookOpen, label: "School" },
+    { path: "/manuals", icon: FileText, label: "Manuals" },
     { path: "/hymns", icon: Music, label: "Hymns" },
-    { path: "/bible", icon: Book, label: "Bible" },
+    { path: "/quiz", icon: HelpCircle, label: "Quiz" },
     { path: "/menu", icon: Menu, label: "More" },
   ];
 
