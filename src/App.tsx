@@ -20,6 +20,7 @@ import QuizYears from "./pages/QuizYears";
 import QuizLessons from "./pages/QuizLessons";
 import QuizQuestions from "./pages/QuizQuestions";
 import QuizResults from "./pages/QuizResults";
+import QuizHistory from "./pages/QuizHistory";
 import Payment from "./pages/Payment";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -54,6 +55,7 @@ const App = () => (
           <Route path="/quiz/:type/:year/lessons" element={<QuizLessons />} />
           <Route path="/quiz/:type/:year/lesson/:lessonId" element={<QuizQuestions />} />
           <Route path="/quiz/:type/:year/lesson/:lessonId/results" element={<QuizResults />} />
+          <Route path="/quiz-history" element={<QuizHistory />} />
           
           <Route path="/payment" element={<Payment />} />
           <Route path="/profile" element={<Profile />} />
