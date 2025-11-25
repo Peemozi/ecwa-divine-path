@@ -1,24 +1,24 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, BookOpen, GraduationCap } from "lucide-react";
+import { ArrowLeft, Brain, GraduationCap } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
-const Manuals = () => {
+const Quiz = () => {
   const navigate = useNavigate();
 
-  const manualTypes = [
+  const quizTypes = [
     { 
       id: "sunday-school", 
-      title: "Sunday School Manual", 
-      icon: BookOpen,
-      description: "Weekly teaching materials"
+      title: "Sunday School Quiz", 
+      icon: Brain,
+      description: "Test your Sunday School knowledge"
     },
     { 
       id: "bible-study", 
-      title: "Bible Study Manual", 
+      title: "Bible Study Quiz", 
       icon: GraduationCap,
-      description: "In-depth Bible studies"
+      description: "Test your Bible Study knowledge"
     },
   ];
 
@@ -34,27 +34,27 @@ const Manuals = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-bold">Manuals</h1>
+          <h1 className="text-xl font-bold">Quiz</h1>
         </div>
       </header>
 
-      {/* Manual Selection */}
+      {/* Quiz Type Selection */}
       <main className="mx-auto max-w-4xl p-4 space-y-4">
-        {manualTypes.map((manual) => {
-          const Icon = manual.icon;
+        {quizTypes.map((quiz) => {
+          const Icon = quiz.icon;
           return (
             <Card
-              key={manual.id}
+              key={quiz.id}
               className="cursor-pointer transition-all hover:shadow-md hover:scale-[1.01]"
-              onClick={() => navigate(`/manuals/${manual.id}/years`)}
+              onClick={() => navigate(`/quiz/${quiz.id}/years`)}
             >
               <CardContent className="flex items-center gap-4 p-6">
-                <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary/20">
-                  <Icon className="h-7 w-7 text-primary" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-accent/20">
+                  <Icon className="h-7 w-7 text-accent-foreground" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{manual.title}</h3>
-                  <p className="text-sm text-muted-foreground">{manual.description}</p>
+                  <h3 className="font-semibold text-lg">{quiz.title}</h3>
+                  <p className="text-sm text-muted-foreground">{quiz.description}</p>
                 </div>
               </CardContent>
             </Card>
@@ -67,4 +67,4 @@ const Manuals = () => {
   );
 };
 
-export default Manuals;
+export default Quiz;
