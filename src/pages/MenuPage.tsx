@@ -12,17 +12,18 @@ import {
   History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import BottomNav from "@/components/BottomNav";
 import ecwaLogo from "@/assets/ecwa-logo.png";
 
 const MenuPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const userEmail = localStorage.getItem("userEmail") || "Guest";
+  const { user, logout } = useAuth();
+  const userEmail = user?.email || localStorage.getItem("userEmail") || "Guest";
 
   const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userEmail");
+    logout();
     toast({
       title: "Logged out successfully",
     });
