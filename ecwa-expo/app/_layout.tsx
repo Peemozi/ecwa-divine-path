@@ -9,6 +9,10 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="verify-token" />
         <Stack.Screen name="auth" />
+        <Stack.Screen name="login-email-password" />
+        <Stack.Screen name="login-email-only" />
+        <Stack.Screen name="create-account" />
+        <Stack.Screen name="forgot-password" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="payment" />
         <Stack.Screen name="sunday-school" />

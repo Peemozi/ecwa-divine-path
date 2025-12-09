@@ -1,4 +1,4 @@
-import AuthScreen from '@/src/pages/Auth';
+import Auth from '@/src/pages/Auth';
 
-export default AuthScreen;
+export default Auth;
 

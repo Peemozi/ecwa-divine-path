@@ -13,6 +13,7 @@ import { ArrowLeft, User, Moon, Sun, Type } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Palette, Spacing, Radii, Shadow } from "@/constants/theme";
+// Backend temporarily disabled - import removed
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
 
@@ -32,8 +33,10 @@ const Profile = () => {
   }, []);
 
   const handleLogout = async () => {
-    await AsyncStorage.removeItem("authToken");
+    // Backend temporarily disabled - just remove local storage
+    await AsyncStorage.removeItem("apiToken");
     await AsyncStorage.removeItem("userEmail");
+    await AsyncStorage.removeItem("userName");
     router.replace("/auth");
   };
 

@@ -5,12 +5,10 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
 
@@ -24,17 +22,17 @@ export default function VerifyToken() {
   const [token, setToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check if already verified on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      const authToken = await AsyncStorage.getItem('authToken');
-      if (authToken) {
-        // Already verified, redirect to dashboard
-        router.replace('/(tabs)/dashboard');
-      }
-    };
-    checkAuth();
-  }, [router]);
+  // Backend temporarily disabled - skip token check
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const apiToken = await AsyncStorage.getItem('apiToken');
+  //     if (apiToken) {
+  //       // Already verified, redirect to dashboard
+  //       router.replace('/(tabs)/dashboard');
+  //     }
+  //   };
+  //   checkAuth();
+  // }, [router]);
 
   const handleVerify = async () => {
     if (!token) {
@@ -44,66 +42,65 @@ export default function VerifyToken() {
 
     setIsLoading(true);
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      await AsyncStorage.setItem("authToken", "demo-token-" + Date.now());
+    // Simulate API call delay (backend temporarily disabled)
+    setTimeout(async () => {
+      // Mock successful login - store user data locally
       await AsyncStorage.setItem("userEmail", email);
-
+      await AsyncStorage.setItem("userName", email.split("@")[0]); // Use email prefix as name
+      await AsyncStorage.setItem("apiToken", "mock-token-temp"); // Temporary mock token
+      
+      setIsLoading(false);
       Toast.show({ type: "success", text1: "Login successful!" });
       router.replace("/(tabs)/dashboard");
-    } catch {
-      Toast.show({ type: "error", text1: "Invalid verification code" });
-    } finally {
-      setIsLoading(false);
-    }
+    }, 1000);
   };
 
   return (
     <View style={styles.container}>
-
-      {/* LOGO */}
-      <Animated.View entering={FadeInUp} style={{ marginBottom: 35 }}>
-        <Image
-          source={require("../assets/ecwa-logo.png")}
-          style={{ width: 95, height: 95 }}
-        />
-      </Animated.View>
-
-      {/* CARD */}
       <Animated.View entering={FadeInUp} style={styles.card}>
-        <Text style={styles.title}>Verify Your Email</Text>
-        <Text style={styles.subtitle}>Enter the 6-digit code sent to</Text>
-        <Text style={styles.email}>{email}</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Verify Your Email</Text>
+          <Text style={styles.subtitle}>
+            Enter the verification code sent to {email}
+          </Text>
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="123456"
-          keyboardType="number-pad"
-          maxLength={6}
-          value={token}
-          onChangeText={setToken}
-        />
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Verification Code</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter 6-digit code"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              maxLength={6}
+              value={token}
+              onChangeText={setToken}
+              autoFocus
+            />
+          </View>
 
-        <TouchableOpacity
-          style={[styles.button, isLoading && { opacity: 0.6 }]}
-          disabled={isLoading}
-          onPress={handleVerify}
-          activeOpacity={0.8}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Verify & Login</Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, isLoading && styles.buttonDisabled]}
+            disabled={isLoading}
+            onPress={handleVerify}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <Text style={styles.buttonText}>Verifying...</Text>
+            ) : (
+              <Text style={styles.buttonText}>Verify & Login</Text>
+            )}
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => router.replace("/auth")}
-          style={styles.backButton}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backText}>Back to Login</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.replace("/auth")}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backText}>Back to Login</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
 
       <Toast />
@@ -127,8 +124,11 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     ...Shadow.card,
   },
+  header: {
+    marginBottom: Spacing.lg,
+  },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "700",
     textAlign: "center",
     marginBottom: Spacing.xs,
@@ -139,34 +139,39 @@ const styles = StyleSheet.create({
     color: Palette.textMuted,
     fontSize: 14,
   },
-  email: {
-    textAlign: "center",
+  form: {
+    gap: Spacing.md,
+  },
+  inputContainer: {
+    gap: Spacing.xs,
+  },
+  label: {
+    fontSize: 14,
     fontWeight: "600",
-    marginTop: Spacing.xs / 2,
-    marginBottom: Spacing.lg,
     color: Palette.textDefault,
-    fontSize: 15,
   },
   input: {
-    height: 55,
+    height: 48,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#D1D5DB",
     borderRadius: Radii.md,
     textAlign: "center",
-    fontSize: 24,
-    letterSpacing: 7,
-    marginBottom: Spacing.lg,
+    fontSize: 18,
+    letterSpacing: 4,
     color: Palette.textDefault,
     backgroundColor: Palette.background,
+    fontWeight: "500",
   },
   button: {
-    height: 50,
+    height: 48,
     backgroundColor: Palette.accent,
     borderRadius: Radii.md,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: Spacing.sm,
     ...Shadow.cardSoft,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: "#fff",
@@ -175,9 +180,9 @@ const styles = StyleSheet.create({
   },
   backButton: {
     paddingVertical: Spacing.sm,
+    alignItems: "center",
   },
   backText: {
-    textAlign: "center",
     color: Palette.accent,
     fontWeight: "500",
     fontSize: 14,

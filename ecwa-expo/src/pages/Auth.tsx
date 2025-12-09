@@ -1,80 +1,75 @@
-import React, { useState, useEffect } from "react";
-import { 
-  View, Text, TextInput, TouchableOpacity, 
-  StyleSheet, ActivityIndicator 
-} from "react-native";
+import React, { useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { Lock, Mail, UserPlus } from "lucide-react-native";
 
 export default function Auth() {
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     AsyncStorage.setItem("sundaySchoolPaid", "false");
   }, []);
 
-  const handleSendToken = async () => {
-    if (!email) {
-      Toast.show({ type: "error", text1: "Please enter your email" });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      router.push({ pathname: "/verify-token", params: { email } });
-      Toast.show({ type: "success", text1: "Login link sent!" });
-
-    } catch {
-      Toast.show({ type: "error", text1: "Failed to send login link" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <View style={styles.container}>
-      
-      <Animated.View entering={FadeIn} style={{ marginBottom: 40 }}>
+      <Animated.View entering={FadeIn} style={styles.logoContainer}>
         <Image 
           source={require("../assets/ecwa-logo.png")}
-          style={{ width: 95, height: 95 }}
+          style={styles.logo}
         />
       </Animated.View>
 
       <Animated.View entering={ZoomIn} style={styles.card}>
-        <Text style={styles.title}>Welcome</Text>
-        <Text style={styles.subtitle}>Enter your email to receive a login link</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Welcome</Text>
+          <Text style={styles.subtitle}>Choose how you'd like to continue</Text>
+        </View>
 
-        <Text style={styles.label}>Email Address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="your.email@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          onChangeText={setEmail}
-          value={email}
-        />
+        <View style={styles.form}>
+          <TouchableOpacity
+            style={styles.optionButtonPrimary}
+            onPress={() => router.push("/login-email-password")}
+            activeOpacity={0.8}
+          >
+            <View style={styles.optionContent}>
+              <Lock size={18} color="#fff" />
+              <Text style={styles.optionPrimaryText}>Login with Email & Password</Text>
+            </View>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.button, isLoading && { opacity: 0.6 }]}
-          onPress={handleSendToken}
-          disabled={isLoading}
-          activeOpacity={0.8}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Send Login Link</Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.optionButtonSecondary}
+            onPress={() => router.push({ pathname: "/login-email-only" })}
+            activeOpacity={0.8}
+          >
+            <View style={styles.optionContent}>
+              <Mail size={18} color={Palette.textDefault} />
+              <Text style={styles.optionSecondaryText}>Login with Email Only</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>NEW HERE?</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.createAccountButton}
+            onPress={() => router.push("/create-account")}
+            activeOpacity={0.8}
+          >
+            <View style={styles.optionContent}>
+              <UserPlus size={18} color={Palette.textDefault} />
+              <Text style={styles.createAccountText}>Create Account</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
 
       <Toast />
@@ -85,21 +80,35 @@ export default function Auth() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
     padding: Spacing.lg,
+  },
+  logoContainer: {
+    marginBottom: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logo: {
+    width: 96,
+    height: 96,
   },
   card: {
     width: "100%",
     maxWidth: 400,
     backgroundColor: Palette.background,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
     borderRadius: Radii.lg,
     padding: Spacing.lg,
     ...Shadow.card,
   },
+  header: {
+    marginBottom: Spacing.lg,
+  },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "700",
     textAlign: "center",
     color: Palette.textDefault,
@@ -109,12 +118,16 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: Palette.textMuted,
     fontSize: 14,
-    marginBottom: Spacing.lg,
+  },
+  form: {
+    gap: Spacing.md,
+  },
+  inputContainer: {
+    gap: Spacing.xs,
   },
   label: {
     fontSize: 14,
     fontWeight: "600",
-    marginBottom: Spacing.xs,
     color: Palette.textDefault,
   },
   input: {
@@ -123,23 +136,77 @@ const styles = StyleSheet.create({
     borderColor: "#D1D5DB",
     borderRadius: Radii.md,
     paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.md,
     fontSize: 16,
     color: Palette.textDefault,
     backgroundColor: Palette.background,
   },
-  button: {
-    height: 48,
-    backgroundColor: Palette.accent,
+  optionButtonPrimary: {
+    height: 56,
+    backgroundColor: "#0B3B8F",
     borderRadius: Radii.md,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: Spacing.xs,
     ...Shadow.cardSoft,
   },
-  buttonText: {
+  optionPrimaryText: {
     color: "#fff",
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 16,
+  },
+  optionButtonSecondary: {
+    height: 56,
+    backgroundColor: "#fff",
+    borderRadius: Radii.md,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  optionSecondaryText: {
+    color: Palette.textDefault,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  optionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: Spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E5E7EB",
+  },
+  dividerText: {
+    marginHorizontal: Spacing.md,
+    color: Palette.textMuted,
+    fontSize: 12,
+  },
+  createAccountButton: {
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+    backgroundColor: "#F5F6F7",
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  createAccountText: {
+    color: Palette.textDefault,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  backButton: {
+    marginBottom: Spacing.sm,
+    alignSelf: "flex-start",
+  },
+  backButtonText: {
+    color: Palette.accent,
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

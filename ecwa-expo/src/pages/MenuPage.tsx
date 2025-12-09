@@ -21,6 +21,7 @@ import {
   History,
 } from "lucide-react-native";
 import { Palette, Spacing, Radii, Shadow } from "@/constants/theme";
+// Backend temporarily disabled - import removed
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
 
@@ -47,8 +48,10 @@ export default function MenuPage() {
           text: "Log Out",
           style: "destructive",
           onPress: async () => {
-            await AsyncStorage.removeItem("authToken");
+            // Backend temporarily disabled - just remove local storage
+            await AsyncStorage.removeItem("apiToken");
             await AsyncStorage.removeItem("userEmail");
+            await AsyncStorage.removeItem("userName");
             router.replace("/auth");
           },
         },

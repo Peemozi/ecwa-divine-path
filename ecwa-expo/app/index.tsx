@@ -11,18 +11,18 @@ export default function Index() {
 
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
-      // Wait for splash screen (2 seconds)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait for splash screen (1.5 seconds to match web)
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Check if user is already authenticated
-      const authToken = await AsyncStorage.getItem('authToken');
+      // Check for token (matches web flow exactly)
+      const apiToken = await AsyncStorage.getItem('apiToken');
       
-      if (authToken) {
+      if (apiToken) {
         // User is authenticated, go to dashboard
         router.replace('/(tabs)/dashboard');
       } else {
-        // User not authenticated, go to verify token
-        router.replace('/verify-token');
+        // User not authenticated, go to auth page (matches web)
+        router.replace('/auth');
       }
     };
 

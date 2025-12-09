@@ -1,4 +1,4 @@
-import VerifyTokenScreen from '@/src/pages/VerifyToken';
+import VerifyToken from '@/src/pages/VerifyToken';
 
-export default VerifyTokenScreen;
+export default VerifyToken;
 
