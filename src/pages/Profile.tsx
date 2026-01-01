@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, User, Moon, Sun, Type } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
+import { removeApiToken } from "@/lib/api";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -15,8 +16,9 @@ const Profile = () => {
   const userEmail = localStorage.getItem("userEmail") || "Guest";
 
   const handleLogout = () => {
-    localStorage.removeItem("authToken");
+    removeApiToken();
     localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
     toast.success("Logged out successfully");
     navigate("/auth");
   };

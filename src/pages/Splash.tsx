@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { getAuthUser, isAuthenticated } from "@/services/auth";
+import { authApi, getApiToken, removeApiToken } from "@/lib/api";
 import ecwaLogo from "@/assets/ecwa-logo.png";
 
 const Splash = () => {
@@ -12,15 +12,17 @@ const Splash = () => {
       // Small delay for splash visual
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      if (!isAuthenticated()) {
+      const apiToken = getApiToken();
+      if (!apiToken) {
         navigate("/auth");
         return;
       }
 
       try {
-        await getAuthUser();
+        await authApi.getAuthUser();
         navigate("/dashboard");
       } catch {
+        removeApiToken();
         navigate("/auth");
       }
     };

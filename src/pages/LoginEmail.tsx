@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { sendLoginCode } from "@/services/auth";
 import ecwaLogo from "@/assets/ecwa-logo.png";
+import { authApi } from "@/lib/api";
 
 const LoginEmail = () => {
   const [email, setEmail] = useState("");
@@ -25,11 +25,12 @@ const LoginEmail = () => {
     setIsLoading(true);
     
     try {
-      await sendLoginCode(email);
-      toast.success("Code sent! Check your email.");
-      navigate("/login-verify", { state: { email } });
+      await authApi.sendLoginCode(email);
+      navigate("/verify-token", { state: { email } });
+      toast.success("Login code sent! Check your email.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to send code");
+      const errorMessage = error instanceof Error ? error.message : "Failed to send login code";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

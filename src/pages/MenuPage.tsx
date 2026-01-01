@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import BottomNav from "@/components/BottomNav";
 import ecwaLogo from "@/assets/ecwa-logo.png";
+import { removeApiToken } from "@/lib/api";
 
 const MenuPage = () => {
   const navigate = useNavigate();
@@ -24,6 +25,9 @@ const MenuPage = () => {
 
   const handleLogout = () => {
     logout();
+    removeApiToken();
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
     toast({
       title: "Logged out successfully",
     });

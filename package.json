@@ -1,8 +1,9 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "ecwa-divine-path-web",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "ECWA Divine Path Web Application",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

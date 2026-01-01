@@ -48,7 +48,7 @@ export default function VerifyToken() {
       await AsyncStorage.setItem("userEmail", email);
       await AsyncStorage.setItem("userName", email.split("@")[0]); // Use email prefix as name
       await AsyncStorage.setItem("apiToken", "mock-token-temp"); // Temporary mock token
-      
+
       setIsLoading(false);
       Toast.show({ type: "success", text1: "Login successful!" });
       router.replace("/(tabs)/dashboard");
