@@ -27,16 +27,13 @@ const Login = () => {
 
     setIsLoading(true);
     
-    try {
-      await login({ email, password });
-      await checkAuth();
+    // Bypass auth - go directly to dashboard
+    setTimeout(() => {
+      localStorage.setItem("apiToken", "mock-token");
       toast.success("Login successful!");
       navigate("/dashboard");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Wrong Username or Password");
-    } finally {
       setIsLoading(false);
-    }
+    }, 500);
   };
 
   return (
