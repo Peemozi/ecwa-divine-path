@@ -1,113 +1,55 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet, useColorScheme } from 'react-native';
-import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
-import { Home, FileText, Music, HelpCircle, Menu } from 'lucide-react-native';
+import { useLocation, useNavigate } from "react-router-dom";
+import { Home, FileText, Music, HelpCircle, Menu } from "lucide-react";
 
 type TabConfig = {
-  name: string;
-  icon: React.ComponentType<{ size: number; color: string }>;
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
 };
 
 const BottomNav = () => {
-  const navigation = useNavigation<NavigationProp<Record<string, object>>>();
-  const route = useRoute();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const tabs: TabConfig[] = [
-    { name: 'Dashboard', icon: Home, label: 'Home' },
-    { name: 'Manuals', icon: FileText, label: 'Manuals' },
-    { name: 'Hymns', icon: Music, label: 'Hymns' },
-    { name: 'Quiz', icon: HelpCircle, label: 'Quiz' },
-    { name: 'Menu', icon: Menu, label: 'More' },
+    { path: "/dashboard", icon: Home, label: "Home" },
+    { path: "/manuals", icon: FileText, label: "Manuals" },
+    { path: "/hymns", icon: Music, label: "Hymns" },
+    { path: "/quiz", icon: HelpCircle, label: "Quiz" },
+    { path: "/menu", icon: Menu, label: "More" },
   ];
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: isDark ? '#09090b' : '#ffffff',
-          borderTopColor: isDark ? '#27272a' : '#e4e4e7',
-        },
-      ]}
-    >
-      <View style={styles.tabsContainer}>
+    <div className="fixed bottom-0 left-0 right-0 border-t bg-card z-50">
+      <div className="flex justify-around items-center h-16 max-w-4xl mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = route.name === tab.name;
+          const isActive = location.pathname === tab.path;
 
           return (
-            <Pressable
-              key={tab.name}
-              style={styles.tab}
-              onPress={() => navigation.navigate(tab.name as never)}
+            <button
+              key={tab.path}
+              className="flex-1 h-full flex flex-col items-center justify-center"
+              onClick={() => navigate(tab.path)}
             >
               <Icon
-                size={20}
-                color={
-                  isActive
-                    ? isDark
-                      ? '#fafafa'
-                      : '#09090b'
-                    : isDark
-                    ? '#71717a'
-                    : '#a1a1aa'
-                }
+                className={`h-5 w-5 ${
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                }`}
               />
-              <Text
-                style={[
-                  styles.tabLabel,
-                  {
-                    color: isActive
-                      ? isDark
-                        ? '#fafafa'
-                        : '#09090b'
-                      : isDark
-                      ? '#71717a'
-                      : '#a1a1aa',
-                  },
-                ]}
+              <span
+                className={`text-xs mt-1 font-medium ${
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                }`}
               >
                 {tab.label}
-              </Text>
-            </Pressable>
+              </span>
+            </button>
           );
         })}
-      </View>
-    </View>
+      </div>
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderTopWidth: 1,
-    zIndex: 50,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    height: 64,
-    maxWidth: 896,
-    marginHorizontal: 'auto',
-  },
-  tab: {
-    flex: 1,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabLabel: {
-    fontSize: 12,
-    marginTop: 4,
-    fontWeight: '500',
-  },
-});
 
 export default BottomNav;
