@@ -1,58 +1,19 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
-
-// -----------------------
-// MOCK HYMN DATA
-// -----------------------
-const mockHymnData: Record<string, any> = {
-  "1": {
-    number: 1,
-    title: "Holy, Holy, Holy",
-    language: "EN",
-    lyrics: `Holy, holy, holy! Lord God Almighty!
-Early in the morning our song shall rise to Thee;
-Holy, holy, holy, merciful and mighty!
-God in three Persons, blessed Trinity!
-
-Holy, holy, holy! All the saints adore Thee,
-Casting down their golden crowns around the glassy sea;
-Cherubim and seraphim falling down before Thee,
-Which wert, and art, and evermore shalt be.
-
-Holy, holy, holy! though the darkness hide Thee,
-Though the eye of sinful man Thy glory may not see;
-Only Thou art holy; there is none beside Thee,
-Perfect in power, in love, and purity.
-
-Holy, holy, holy! Lord God Almighty!
-All Thy works shall praise Thy Name, in earth, and sky, and sea;
-Holy, holy, holy; merciful and mighty!
-God in three Persons, blessed Trinity!`,
-  },
-  "234": {
-    number: 234,
-    title: "Jọwọ wa sọdọ wa",
-    language: "YO",
-    lyrics: `Jọwọ wa sọdọ wa, Olúwa Jésù,
-Jọwọ gbọ adura wa nínú ọjọ yìí.
-À ń bẹ Ọ, jọwọ wa sọdọ wa,
-Má fi wá sílẹ lọ, Olúwa Jésù.
-
-Ẹnití ó ṣe ẹmi wa lómìnira,
-Má jẹ ká padà sí ẹrú ẹṣẹ mọ.
-À ń bẹ Ọ, jọwọ wa sọdọ wa,
-Má fi wá sílẹ lọ, Olúwa Jésù.`,
-  },
-};
+import Toast from "react-native-toast-message";
+import { hymnApi, isSubscriptionError } from "@/src/lib/api";
+import { formatHymn } from "@/src/lib/hymn-format";
+import { useFontSize } from "@/src/lib/font-size-context";
 
 // -----------------------
 // ROUTE TYPE
@@ -61,8 +22,45 @@ export default function HymnDetail() {
   const router = useRouter();
   const { id: idParam } = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(idParam) ? idParam[0] ?? "1" : idParam ?? "1";
-  const hymn = useMemo(() => mockHymnData[id] ?? mockHymnData["1"], [id]);
-  const [fontSize, setFontSize] = useState(16);
+  const [hymn, setHymn] = useState<any | null>(null);
+  const { fontSize, setFontSize, getScaledSize } = useFontSize();
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const data = await hymnApi.getHymn(id);
+        setHymn(data);
+      } catch (error) {
+        Toast.show({
+          type: "error",
+          text1: (error as Error)?.message || "Failed to load hymn",
+        });
+        router.back();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [id, router]);
+
+  const language = hymn?.language ?? "—";
+  const formatted = hymn ? formatHymn(hymn) : null;
+  const title = formatted?.title ?? "";
+  const number = formatted?.number ?? "";
+  const verses = formatted?.verses ?? [];
+  const chorus = formatted?.chorus;
+
+  // Show loading state while fetching hymn data
+  if (isLoading) {
+    return (
+      <View style={[styles.screen, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={Palette.accent} />
+        <Text style={styles.loadingText}>Loading hymn...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -72,22 +70,26 @@ export default function HymnDetail() {
         </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>{hymn.title}</Text>
-          <Text style={styles.headerSubtitle}>Hymn #{hymn.number}</Text>
+          <Text style={styles.headerTitle}>{title}</Text>
+          <Text style={styles.headerSubtitle}>Hymn #{number}</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.toneButton}
-          onPress={() => setFontSize((size) => Math.min(size + 2, 28))}
-        >
-          <Feather name="plus" size={16} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toneButton, { marginLeft: 6 }]}
-          onPress={() => setFontSize((size) => Math.max(size - 2, 12))}
-        >
-          <Feather name="minus" size={16} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.fontSizeButton}
+            onPress={() => setFontSize(Math.max(12, fontSize - 2))}
+            activeOpacity={0.7}
+          >
+            <Feather name="minus" size={16} color={Palette.textDefault} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.fontSizeButton}
+            onPress={() => setFontSize(Math.min(24, fontSize + 2))}
+            activeOpacity={0.7}
+          >
+            <Feather name="plus" size={16} color={Palette.textDefault} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -96,7 +98,7 @@ export default function HymnDetail() {
       >
         <View style={styles.infoCard}>
           <Text style={styles.infoLabel}>Language</Text>
-          <Text style={styles.infoValue}>{hymn.language}</Text>
+          <Text style={styles.infoValue}>{language}</Text>
           <TouchableOpacity style={styles.audioButton}>
             <Feather name="play" size={16} color={Palette.accent} />
             <Text style={styles.audioText}>Play Audio (coming soon)</Text>
@@ -104,7 +106,38 @@ export default function HymnDetail() {
         </View>
 
         <View style={styles.lyricsCard}>
-          <Text style={[styles.lyrics, { fontSize }]}>{hymn.lyrics}</Text>
+          {chorus ? (
+            <View style={styles.chorusBox}>
+              <Text style={[styles.chorusLabel, { fontSize: getScaledSize(15) }]}>Chorus</Text>
+              <Text style={[styles.chorusText, { fontSize: getScaledSize(15) }]}>
+                {chorus}
+              </Text>
+            </View>
+          ) : null}
+          {verses.length === 0 && !chorus ? (
+            <Text style={[styles.lyrics, { fontSize: getScaledSize(14) }]}>No lyrics available.</Text>
+          ) : (
+            verses.map((verse, idx) => {
+              const isChorusLine = verse.type === "chorus";
+              if (isChorusLine && verse.text) {
+                return (
+                  <View key={idx} style={[styles.chorusBox, { marginTop: idx === 0 && chorus ? Spacing.sm : Spacing.sm }]}>
+                    <Text style={[styles.chorusLabel, { fontSize: getScaledSize(15) }]}>
+                      Chorus
+                    </Text>
+                    <Text style={[styles.chorusText, { fontSize: getScaledSize(15) }]}>
+                      {verse.text}
+                    </Text>
+                  </View>
+                );
+              }
+              return (
+                <Text key={idx} style={[styles.lyrics, { fontSize: getScaledSize(14), marginBottom: Spacing.sm }]}>
+                  {verse.label ? `${verse.label}. ` : ""}{verse.text}
+                </Text>
+              );
+            })
+          )}
         </View>
       </ScrollView>
     </View>
@@ -145,6 +178,19 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     color: Palette.textMuted,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  fontSizeButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#eef1f6",
+    alignItems: "center",
+    justifyContent: "center",
   },
   toneButton: {
     backgroundColor: Palette.accent,
@@ -194,8 +240,35 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     ...Shadow.cardSoft,
   },
+  chorusBox: {
+    borderLeftWidth: 3,
+    borderLeftColor: Palette.accent,
+    backgroundColor: "#e8f0ff",
+    padding: Spacing.md,
+    borderRadius: Radii.md,
+    marginBottom: Spacing.md,
+  },
+  chorusLabel: {
+    color: Palette.accent,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  chorusText: {
+    color: Palette.textDefault,
+    fontWeight: "600",
+    lineHeight: 22,
+  },
   lyrics: {
     lineHeight: 24,
     color: Palette.textDefault,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 14,
+    color: Palette.textMuted,
   },
 });

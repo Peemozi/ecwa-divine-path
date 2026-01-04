@@ -20,12 +20,34 @@ When testing on Expo Go, you may see "NETWORK REQUEST FAILED" errors because the
 
 ### Step 2: Update API URL
 
-You have two options:
+**Good News:** The app now automatically detects your computer's IP address when running on mobile devices! 
 
-#### Option A: Set Environment Variable (Recommended)
+However, if automatic detection doesn't work, you have these options:
+
+#### Option A: Manual IP Override (Easiest)
+
+1. Find your computer's IP address (see Step 1 above)
+2. Set an environment variable when starting Expo:
+   ```bash
+   # Windows PowerShell
+   $env:EXPO_PUBLIC_API_IP="192.168.1.100"; npx expo start
+   
+   # Windows CMD
+   set EXPO_PUBLIC_API_IP=192.168.1.100 && npx expo start
+   
+   # Mac/Linux
+   EXPO_PUBLIC_API_IP=192.168.1.100 npx expo start
+   ```
+   Replace `192.168.1.100` with your actual IP address.
+
+#### Option B: Create .env File (Alternative)
 
 1. Create a `.env` file in the `ecwa-expo` directory (if it doesn't exist)
 2. Add this line (replace with your actual IP address):
+   ```
+   EXPO_PUBLIC_API_IP=192.168.1.100
+   ```
+   Or set the full URL:
    ```
    EXPO_PUBLIC_API_BASE_URL=http://192.168.1.100:8000/api
    ```

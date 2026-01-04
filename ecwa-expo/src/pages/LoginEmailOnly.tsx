@@ -13,23 +13,43 @@ import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { Mail, ArrowLeft } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { authApi } from "@/src/lib/api";
+import { useAuthFlow } from "@/src/lib/auth-flow-state";
 
 export default function LoginEmailOnly() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const { state, setField } = useAuthFlow();
+  const { email } = state;
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendCode = () => {
+  const handleSendCode = async () => {
     if (!email) {
       Toast.show({ type: "error", text1: "Please enter your email" });
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authApi.sendLoginCode(email);
       Toast.show({ type: "success", text1: "Login code sent! Check your email." });
       router.push({ pathname: "/verify-token", params: { email } });
-    }, 800);
+    } catch (error) {
+      console.error('[LoginEmailOnly] Error sending login code:', error);
+      let message = error instanceof Error ? error.message : "Failed to send code";
+      
+      // Provide more helpful error message for network errors
+      if (message.includes('Network request failed') || message.includes('fetch')) {
+        message = "Cannot connect to server. Please check:\n• API server is running\n• Your device is on the same network\n• Check console for API URL";
+      }
+      
+      Toast.show({ 
+        type: "error", 
+        text1: "Login Failed",
+        text2: message,
+        visibilityTime: 5000
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -64,7 +84,7 @@ export default function LoginEmailOnly() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
-              onChangeText={setEmail}
+              onChangeText={(value) => setField("email", value)}
               value={email}
             />
           </View>

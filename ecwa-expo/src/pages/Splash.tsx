@@ -2,7 +2,6 @@
 import React, { useEffect, useRef } from "react";
 import type { ImageSourcePropType } from "react-native";
 import {
-  SafeAreaView,
   View,
   Image,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type SplashProps = {
   logoSource?: ImageSourcePropType;

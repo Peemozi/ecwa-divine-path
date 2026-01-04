@@ -22,9 +22,14 @@ type Lesson = {
 
 const QuizLessons = () => {
   const router = useRouter();
-  const params = useLocalSearchParams<{ type?: string | string[]; year?: string | string[] }>();
+  const params = useLocalSearchParams<{ 
+    type?: string | string[]; 
+    year?: string | string[];
+    language?: string | string[];
+  }>();
   const type = Array.isArray(params.type) ? params.type[0] ?? '' : params.type ?? '';
   const year = Array.isArray(params.year) ? params.year[0] ?? '' : params.year ?? '';
+  const language = Array.isArray(params.language) ? params.language[0] ?? '' : params.language ?? '';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [backPressed, setBackPressed] = useState(false);
@@ -65,7 +70,9 @@ const QuizLessons = () => {
           <Image source={ecwaLogo} style={styles.headerLogo} resizeMode="contain" />
           <View>
             <Text style={styles.headerTitleText}>{title}</Text>
-            <Text style={styles.headerSubtitle}>Year {year}</Text>
+            <Text style={styles.headerSubtitle}>
+              {year}{language ? ` • ${language}` : ''}
+            </Text>
           </View>
         </View>
       </View>
@@ -95,6 +102,7 @@ const QuizLessons = () => {
                 params: {
                   type,
                   year,
+                  language,
                   lessonId: lesson.id,
                   lessonTitle: lesson.title,
                 },

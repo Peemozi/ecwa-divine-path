@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,41 +6,141 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
+  ListRenderItem,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
 import { Book } from "lucide-react-native";
-
-const hymns = [
-  { id: 1, number: 1, title: "Holy, Holy, Holy", preview: "Holy, holy, holy! Lord God Almighty!", language: "EN" },
-  { id: 2, number: 2, title: "Come, Thou Almighty King", preview: "Come, thou Almighty King, help us thy name to sing", language: "EN" },
-  { id: 3, number: 234, title: "Jọwọ wa sọdọ wa", preview: "Jọwọ wa sọdọ wa, Olúwa Jésù", language: "YO" },
-  { id: 4, number: 235, title: "Ẹni tí ó gbé ayé dá", preview: "Ẹni tí ó gbé ayé dá, ó ṣe àwọn òkè", language: "YO" },
-  { id: 5, number: 567, title: "Amazing Grace", preview: "Amazing grace, how sweet the sound", language: "EN" },
-];
+import Toast from "react-native-toast-message";
+import { hymnApi, isSubscriptionError } from "@/src/lib/api";
 
 const filters = [
   { key: "all", label: "All" },
-  { key: "en", label: "English" },
-  { key: "yo", label: "Yoruba" },
+  { key: "english", label: "English" },
+  { key: "yoruba", label: "Yoruba" },
 ];
 
 export default function Hymns() {
   const router = useRouter();
-  const [filter, setFilter] = useState<"all" | "en" | "yo">("all");
+  const [filter, setFilter] = useState<"all" | "english" | "yoruba">("all");
   const [query, setQuery] = useState("");
+  const [hymns, setHymns] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadHymns = async () => {
+    setIsLoading(true);
+    try {
+      // For "all", don't pass language param to get both English and Yoruba
+      // For specific language, pass it to filter
+      const languageParam = filter === "all" ? undefined : filter;
+      let data = await hymnApi.listHymns({ language: languageParam, search: query.trim() || undefined });
+      
+      // If filtering by language and API doesn't filter, do client-side filtering
+      if (filter !== "all" && data && data.length > 0) {
+        data = data.filter((hymn: any) => {
+          const hymnLang = (hymn.language || '').toLowerCase();
+          if (filter === "english") {
+            return hymnLang === 'english' || hymnLang === 'en';
+          } else if (filter === "yoruba") {
+            return hymnLang === 'yoruba' || hymnLang === 'yo' || hymnLang === 'yorùbá';
+          }
+          return true;
+        });
+      }
+      
+      // Sort hymns: by number first, then by language (English before Yoruba)
+      const sortedHymns = (data ?? []).sort((a, b) => {
+        // First sort by number
+        const numA = Number(a.number) || 0;
+        const numB = Number(b.number) || 0;
+        if (numA !== numB) {
+          return numA - numB;
+        }
+        // If same number, English comes before Yoruba
+        const langA = (a.language || '').toLowerCase();
+        const langB = (b.language || '').toLowerCase();
+        if (langA === 'english' || langA === 'en') return -1;
+        if (langB === 'english' || langB === 'en') return 1;
+        if (langA === 'yoruba' || langA === 'yo' || langA === 'yorùbá') return 1;
+        if (langB === 'yoruba' || langB === 'yo' || langB === 'yorùbá') return -1;
+        return 0;
+      });
+      
+      setHymns(sortedHymns);
+    } catch (error) {
+      const message = (error as Error).message || "Failed to load hymns";
+      Toast.show({ type: "error", text1: message });
+      setHymns([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadHymns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
+  // Also reload when search query changes (with debounce would be better, but this works)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (query.trim()) {
+        loadHymns();
+      } else {
+        loadHymns();
+      }
+    }, 500); // Debounce search by 500ms
+    
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   const visibleHymns = useMemo(
-    () =>
-      hymns.filter((hymn) => {
-        const matchesFilter =
-          filter === "all" || hymn.language.toLowerCase() === filter;
+    () => {
+      // If we have a search query, filter client-side as well (for better UX)
+      // But the API should handle most filtering
+      if (!query.trim()) {
+        return hymns;
+      }
+      return hymns.filter((hymn) => {
         const matchesSearch =
-          hymn.title.toLowerCase().includes(query.toLowerCase()) ||
-          hymn.number.toString().includes(query);
-        return matchesFilter && matchesSearch;
-      }),
-    [filter, query],
+          hymn.title?.toLowerCase().includes(query.toLowerCase()) ||
+          hymn.number?.toString().includes(query);
+        return matchesSearch;
+      });
+    },
+    [hymns, query],
+  );
+
+  // Optimized render function with useCallback
+  const renderHymnItem: ListRenderItem<any> = useCallback(
+    ({ item }) => (
+      <TouchableOpacity
+        style={styles.hymnCard}
+        onPress={() =>
+          router.push({
+            pathname: "/hymn-detail",
+            params: { id: String(item.id) },
+          })
+        }
+      >
+        <View style={styles.numberBadge}>
+          <Text style={styles.numberText}>{item.number}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={styles.hymnTitleRow}>
+            <Text style={styles.hymnTitle}>{item.title}</Text>
+            <View style={styles.languagePill}>
+              <Text style={styles.languageText}>{item.language}</Text>
+            </View>
+          </View>
+          <Text style={styles.hymnPreview} numberOfLines={1}>
+            {item.preview || item.first_line || item.chorus || ""}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    ),
+    [router],
   );
 
   return (
@@ -83,7 +183,8 @@ export default function Hymns() {
           placeholder="Search by title or number..."
           style={styles.searchInput}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(val) => setQuery(val)}
+          onSubmitEditing={loadHymns}
         />
       </View>
 
@@ -91,32 +192,14 @@ export default function Hymns() {
         data={visibleHymns}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.hymnCard}
-            onPress={() =>
-              router.push({
-                pathname: "/hymn-detail",
-                params: { id: String(item.id) },
-              })
-            }
-          >
-            <View style={styles.numberBadge}>
-              <Text style={styles.numberText}>{item.number}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={styles.hymnTitleRow}>
-                <Text style={styles.hymnTitle}>{item.title}</Text>
-                <View style={styles.languagePill}>
-                  <Text style={styles.languageText}>{item.language}</Text>
-                </View>
-              </View>
-              <Text style={styles.hymnPreview} numberOfLines={1}>
-                {item.preview}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        refreshing={isLoading}
+        onRefresh={loadHymns}
+        renderItem={renderHymnItem}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={15}
+        windowSize={10}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No results</Text>
@@ -206,7 +289,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.xl,
+    paddingBottom: Spacing.xxl * 2,
     gap: Spacing.md,
   },
   hymnCard: {

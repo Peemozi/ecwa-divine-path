@@ -11,28 +11,23 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { authApi, setTokens, userApi } from "@/src/lib/api";
+import { useAuthFlow } from "@/src/lib/auth-flow-state";
 
 export default function VerifyToken() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string | string[] }>();
+  const { state, setField, resetAuthFlow } = useAuthFlow();
   const email = useMemo(() => {
     if (!params.email) return "";
     return Array.isArray(params.email) ? params.email[0] : params.email;
   }, [params.email]);
-  const [token, setToken] = useState("");
+  const { loginCode: token } = state;
   const [isLoading, setIsLoading] = useState(false);
 
-  // Backend temporarily disabled - skip token check
-  // useEffect(() => {
-  //   const checkAuth = async () => {
-  //     const apiToken = await AsyncStorage.getItem('apiToken');
-  //     if (apiToken) {
-  //       // Already verified, redirect to dashboard
-  //       router.replace('/(tabs)/dashboard');
-  //     }
-  //   };
-  //   checkAuth();
-  // }, [router]);
+  useEffect(() => {
+    if (email) setField("email", email);
+  }, [email, setField]);
 
   const handleVerify = async () => {
     if (!token) {
@@ -41,18 +36,41 @@ export default function VerifyToken() {
     }
 
     setIsLoading(true);
+    try {
+      const response = await authApi.verifyLoginCode(email, token);
+      await setTokens(response.access_token, response.refresh_token);
+      await AsyncStorage.multiSet([
+        ["userEmail", response.user.email ?? email],
+        ["userName", response.user.name ?? email.split("@")[0]],
+      ]);
 
-    // Simulate API call delay (backend temporarily disabled)
-    setTimeout(async () => {
-      // Mock successful login - store user data locally
-      await AsyncStorage.setItem("userEmail", email);
-      await AsyncStorage.setItem("userName", email.split("@")[0]); // Use email prefix as name
-      await AsyncStorage.setItem("apiToken", "mock-token-temp"); // Temporary mock token
+      try {
+        const dash: any = await userApi.getDashboard();
+        if (dash?.user?.name) {
+          await AsyncStorage.setItem("userName", dash.user.name);
+        }
+        if (dash?.user?.email) {
+          await AsyncStorage.setItem("userEmail", dash.user.email);
+        }
+        if (dash?.user?.subscription?.hasAccess !== undefined) {
+          await AsyncStorage.setItem(
+            "sundaySchoolPaid",
+            dash.user.subscription.hasAccess ? "true" : "false"
+          );
+        }
+      } catch (dashError) {
+        // Dashboard preload failed - continue with login
+      }
 
-      setIsLoading(false);
       Toast.show({ type: "success", text1: "Login successful!" });
+      resetAuthFlow();
       router.replace("/(tabs)/dashboard");
-    }, 1000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Verification failed";
+      Toast.show({ type: "error", text1: message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -75,7 +93,7 @@ export default function VerifyToken() {
               keyboardType="number-pad"
               maxLength={6}
               value={token}
-              onChangeText={setToken}
+              onChangeText={(value) => setField("loginCode", value)}
               autoFocus
             />
           </View>

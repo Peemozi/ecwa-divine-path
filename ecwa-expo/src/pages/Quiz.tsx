@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from "rea
 import { Brain, GraduationCap } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { Palette, Spacing, Radii, Shadow } from "@/constants/theme";
+import Toast from "react-native-toast-message";
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
 
@@ -29,7 +30,13 @@ const Quiz = () => {
   ];
 
   const goToYears = (id: string) => {
-    router.push({ pathname: "/quiz-years", params: { quizId: id } });
+    // Show coming soon for all quiz types
+    Toast.show({
+      type: "success",
+      text1: "Coming Soon",
+      text2: "Quiz features will be available soon.",
+      visibilityTime: 3000,
+    });
   };
 
   return (

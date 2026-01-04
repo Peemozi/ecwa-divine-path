@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { ArrowLeft, Calendar } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Palette, Spacing, Radii, Shadow } from '@/constants/theme';
+import { manualApi, isSubscriptionError } from '@/src/lib/api';
+import Toast from 'react-native-toast-message';
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
 
@@ -11,9 +13,33 @@ const QuizYears = () => {
   const { quizId } = useLocalSearchParams<{ quizId?: string | string[] }>();
   const type = Array.isArray(quizId) ? quizId[0] ?? '' : quizId ?? '';
   const [backPressed, setBackPressed] = useState(false);
+  const [years, setYears] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const years = [2021, 2022, 2023, 2024, 2025, 2026];
   const title = type === "sunday-school" ? "Sunday School Quiz" : "Bible Study Quiz";
+
+  useEffect(() => {
+    const loadYears = async () => {
+      if (!type) return;
+      setIsLoading(true);
+      try {
+        const data = await manualApi.getYears(type);
+        setYears(data ?? []);
+      } catch (error) {
+        if (isSubscriptionError(error)) {
+          router.replace("/payment");
+          return;
+        }
+        Toast.show({
+          type: "error",
+          text1: (error as Error).message || "Failed to load years",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadYears();
+  }, [router, type]);
 
   return (
     <View style={styles.container}>
@@ -39,27 +65,39 @@ const QuizYears = () => {
 
       {/* Years List */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {years.map((year) => (
-          <TouchableOpacity
-            key={year}
-            style={[styles.yearCard, Shadow.cardSoft]}
-            onPress={() =>
-              router.push({
-                pathname: '/quiz-lessons',
-                params: { type, year: String(year) },
-              })
-            }
-            activeOpacity={0.8}
-          >
-            <View style={styles.yearIconBg}>
-              <Calendar size={24} color={Palette.accent} />
-            </View>
-            <View style={styles.yearContent}>
-              <Text style={styles.yearText}>{year}</Text>
-              <Text style={styles.yearSubtext}>{title} {year}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Palette.accent} />
+            <Text style={styles.loadingText}>Loading years...</Text>
+          </View>
+        ) : (
+          <>
+            {years.map((year) => (
+              <TouchableOpacity
+                key={year}
+                style={[styles.yearCard, Shadow.cardSoft]}
+                onPress={() =>
+                  router.push({
+                    pathname: '/quiz-language',
+                    params: { type, year: String(year) },
+                  })
+                }
+                activeOpacity={0.8}
+              >
+                <View style={styles.yearIconBg}>
+                  <Calendar size={24} color={Palette.accent} />
+                </View>
+                <View style={styles.yearContent}>
+                  <Text style={styles.yearText}>{year}</Text>
+                  <Text style={styles.yearSubtext}>{title} {year}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            {!isLoading && years.length === 0 && (
+              <Text style={styles.emptyText}>No years found.</Text>
+            )}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -134,5 +172,22 @@ const styles = StyleSheet.create({
   yearSubtext: {
     fontSize: 14,
     color: Palette.textMuted,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: Spacing.xxl,
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 14,
+    color: Palette.textMuted,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: Palette.textMuted,
+    fontSize: 14,
+    paddingVertical: Spacing.xxl,
   },
 });

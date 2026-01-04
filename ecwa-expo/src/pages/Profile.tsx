@@ -2,25 +2,24 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  Switch,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
   Image,
 } from "react-native";
 import Slider from "@react-native-community/slider";
-import { ArrowLeft, User, Moon, Sun, Type } from "lucide-react-native";
+import { ArrowLeft, User, Type } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { Palette, Spacing, Radii, Shadow } from "@/constants/theme";
-// Backend temporarily disabled - import removed
+import { authApi, removeTokens } from "@/src/lib/api";
+import { useFontSize } from "@/src/lib/font-size-context";
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
 
 const Profile = () => {
   const router = useRouter();
-  const [isDark, setIsDark] = useState(false);
-  const [fontSize, setFontSize] = useState(16);
+  const { fontSize, setFontSize } = useFontSize();
   const [userEmail, setUserEmail] = useState("Guest");
   const [backPressed, setBackPressed] = useState(false);
 
@@ -33,11 +32,13 @@ const Profile = () => {
   }, []);
 
   const handleLogout = async () => {
-    // Backend temporarily disabled - just remove local storage
-    await AsyncStorage.removeItem("apiToken");
-    await AsyncStorage.removeItem("userEmail");
-    await AsyncStorage.removeItem("userName");
-    router.replace("/auth");
+    try {
+      await authApi.logout().catch(() => undefined);
+    } finally {
+      await removeTokens();
+      await AsyncStorage.multiRemove(["userEmail", "userName"]);
+      router.replace("/auth");
+    }
   };
 
   return (
@@ -81,24 +82,6 @@ const Profile = () => {
             <Text style={styles.cardTitle}>Appearance</Text>
           </View>
           <Text style={styles.cardSubtitle}>Customize your reading experience</Text>
-
-          {/* DARK MODE */}
-          <View style={styles.settingRow}>
-            <View style={styles.settingLeft}>
-              {isDark ? (
-                <Moon size={20} color={Palette.textMuted} />
-              ) : (
-                <Sun size={20} color={Palette.textMuted} />
-              )}
-              <Text style={styles.settingLabel}>Dark Mode</Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={setIsDark}
-              trackColor={{ false: "#d1d5db", true: Palette.accent }}
-              thumbColor="#fff"
-            />
-          </View>
 
           {/* FONT SIZE */}
           <View style={styles.fontSizeContainer}>

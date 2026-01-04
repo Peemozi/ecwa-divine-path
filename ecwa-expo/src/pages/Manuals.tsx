@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { ArrowLeft, BookOpen, GraduationCap } from "lucide-react-native";
+import { BookOpen, GraduationCap, ArrowLeft } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { userApi, isSubscriptionError } from "@/src/lib/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Toast from "react-native-toast-message";
 
 const manuals = [
   {
@@ -33,23 +37,73 @@ const manuals = [
 
 export default function Manuals() {
   const router = useRouter();
-  const [backPressed, setBackPressed] = useState(false);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+
+  const handleManualPress = async (manualId: string) => {
+    // For Bible Study, show coming soon message
+    if (manualId === "bible-study") {
+      Toast.show({
+        type: "success",
+        text1: "Coming Soon",
+        text2: "Bible Study manuals will be available soon.",
+        visibilityTime: 3000,
+      });
+      return;
+    }
+    
+    // For Sunday School, check payment before navigating
+    if (manualId === "sunday-school") {
+      setIsCheckingPayment(true);
+      try {
+        const dash: any = await userApi.getDashboard();
+        const hasAccess = dash?.user?.subscription?.hasAccess === true;
+        await AsyncStorage.setItem("sundaySchoolPaid", hasAccess ? "true" : "false");
+        
+        if (!hasAccess) {
+          setIsCheckingPayment(false);
+          router.push("/payment");
+          return;
+        }
+      } catch (error) {
+        console.error("[Manuals] Payment check error:", error);
+        setIsCheckingPayment(false);
+        if (isSubscriptionError(error)) {
+          await AsyncStorage.setItem("sundaySchoolPaid", "false");
+          router.push("/payment");
+          return;
+        }
+        // For server errors (500), check stored value as fallback
+        const apiError = error as any;
+        if (apiError?.status === 500) {
+          // Server error - using stored value as fallback
+        }
+        // For network or server errors, check stored value as fallback
+        try {
+          const stored = await AsyncStorage.getItem("sundaySchoolPaid");
+          if (stored !== "true") {
+            router.push("/payment");
+            return;
+          }
+          // If stored value says paid, allow navigation
+        } catch (storageError) {
+          // If we can't check storage, allow navigation
+        }
+      } finally {
+        setIsCheckingPayment(false);
+      }
+    }
+    
+    // Navigate to manual years (within tabs structure)
+    router.push({
+      pathname: "/(tabs)/manuals/years",
+      params: { type: manualId },
+    });
+  };
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          onPressIn={() => setBackPressed(true)}
-          onPressOut={() => setBackPressed(false)}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft
-            size={20}
-            color={backPressed ? Palette.accent : Palette.textDefault}
-          />
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
         <Text style={styles.headerTitle}>Manuals</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -64,12 +118,7 @@ export default function Manuals() {
             <TouchableOpacity
               key={manual.id}
               style={[styles.card, { backgroundColor: manual.card }]}
-              onPress={() =>
-                router.push({
-                  pathname: "/manual-years",
-                  params: { type: manual.id },
-                })
-              }
+              onPress={() => handleManualPress(manual.id)}
             >
               <View
                 style={[styles.iconWrap, { backgroundColor: manual.iconBg }]}

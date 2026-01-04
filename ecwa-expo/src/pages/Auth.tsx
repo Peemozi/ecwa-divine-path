@@ -71,8 +71,6 @@ export default function Auth() {
           </TouchableOpacity>
         </View>
       </Animated.View>
-
-      <Toast />
     </View>
   );
 }

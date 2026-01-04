@@ -1,15 +1,40 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from "react-native";
 import { ArrowLeft, Calendar } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { manualApi, isSubscriptionError } from "@/src/lib/api";
+import Toast from "react-native-toast-message";
 
 export default function SundaySchoolYears() {
   const router = useRouter();
   const [backPressed, setBackPressed] = useState(false);
+  const [years, setYears] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const years = [2021, 2022, 2023, 2024, 2025, 2026];
   const title = "Sunday School Manual";
+
+  useEffect(() => {
+    const loadYears = async () => {
+      setIsLoading(true);
+      try {
+        const data = await manualApi.getYears("sunday-school");
+        setYears(data ?? []);
+      } catch (error) {
+        if (isSubscriptionError(error)) {
+          router.replace("/payment");
+          return;
+        }
+        Toast.show({
+          type: "error",
+          text1: (error as Error).message || "Failed to load years",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadYears();
+  }, [router]);
 
   return (
     <View style={styles.screen}>
@@ -31,29 +56,41 @@ export default function SundaySchoolYears() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {years.map((year) => (
-          <TouchableOpacity
-            key={year}
-            style={styles.card}
-            onPress={() =>
-              router.push({
-                pathname: "/manual-language",
-                params: { type: "sunday-school", year: String(year) },
-              })
-            }
-            activeOpacity={0.8}
-          >
-            <View style={styles.iconWrap}>
-              <Calendar size={24} color={Palette.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{year}</Text>
-              <Text style={styles.cardSubtitle}>
-                {title} {year}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Palette.accent} />
+            <Text style={styles.loadingText}>Loading years...</Text>
+          </View>
+        ) : (
+          <>
+            {years.map((year) => (
+              <TouchableOpacity
+                key={year}
+                style={styles.card}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/manuals/language",
+                    params: { type: "sunday-school", year: String(year) },
+                  })
+                }
+                activeOpacity={0.8}
+              >
+                <View style={styles.iconWrap}>
+                  <Calendar size={24} color={Palette.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>{year}</Text>
+                  <Text style={styles.cardSubtitle}>
+                    {title} {year}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            {!isLoading && years.length === 0 && (
+              <Text style={styles.emptyText}>No years found.</Text>
+            )}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -117,6 +154,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Palette.textMuted,
     marginTop: 2,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: Spacing.xxl,
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 14,
+    color: Palette.textMuted,
+  },
+  emptyText: {
+    textAlign: "center",
+    color: Palette.textMuted,
+    fontSize: 14,
+    paddingVertical: Spacing.xxl,
   },
 });
 

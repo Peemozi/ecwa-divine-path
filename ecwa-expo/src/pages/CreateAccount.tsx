@@ -8,19 +8,18 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { UserPlus, ArrowLeft, Eye, EyeOff } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { authApi, setTokens } from "@/src/lib/api";
+import { useAuthFlow } from "@/src/lib/auth-flow-state";
 
 export default function CreateAccount() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [language, setLanguage] = useState<"English" | "Yoruba" | "Hausa" | "Igbo">("English");
+  const { state, setField, resetAuthFlow } = useAuthFlow();
+  const { name, email, password, language } = state;
   const [showLanguageOptions, setShowLanguageOptions] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,16 +31,23 @@ export default function CreateAccount() {
     }
 
     setIsLoading(true);
-
-    // Mock create account flow
-    setTimeout(async () => {
-      await AsyncStorage.setItem("userEmail", email);
-      await AsyncStorage.setItem("userName", name);
-      await AsyncStorage.setItem("apiToken", "mock-token-temp");
+    try {
+      const response = await authApi.register({
+        name,
+        email,
+        password,
+        language,
+      });
+      await setTokens(response.access_token, response.refresh_token);
       setIsLoading(false);
       Toast.show({ type: "success", text1: "Account created!" });
-      router.replace("/(tabs)/dashboard");
-    }, 900);
+      resetAuthFlow();
+      router.replace("/account-created");
+    } catch (error) {
+      setIsLoading(false);
+      const message = error instanceof Error ? error.message : "Failed to create account";
+      Toast.show({ type: "error", text1: message });
+    }
   };
 
   return (
@@ -71,7 +77,7 @@ export default function CreateAccount() {
               placeholder="John Doe"
               placeholderTextColor="#9CA3AF"
               autoCapitalize="words"
-              onChangeText={setName}
+              onChangeText={(value) => setField("name", value)}
               value={name}
             />
           </View>
@@ -85,7 +91,7 @@ export default function CreateAccount() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
-              onChangeText={setEmail}
+              onChangeText={(value) => setField("email", value)}
               value={email}
             />
           </View>
@@ -99,7 +105,7 @@ export default function CreateAccount() {
                 placeholderTextColor="#9CA3AF"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
-                onChangeText={setPassword}
+                onChangeText={(value) => setField("password", value)}
                 value={password}
               />
               <TouchableOpacity
@@ -137,7 +143,7 @@ export default function CreateAccount() {
                     ]}
                     activeOpacity={0.8}
                     onPress={() => {
-                      setLanguage(opt);
+                      setField("language", opt);
                       setShowLanguageOptions(false);
                     }}
                   >
@@ -181,8 +187,6 @@ export default function CreateAccount() {
           </TouchableOpacity>
         </View>
       </Animated.View>
-
-      <Toast />
     </View>
   );
 }

@@ -44,7 +44,7 @@ const About = () => {
         {/* App Logo & Name */}
         <View style={styles.logoSection}>
           <Image source={ecwaLogo} style={styles.appLogo} resizeMode="contain" />
-          <Text style={styles.appName}>ECWA Divine Path</Text>
+          <Text style={styles.appName}>ECWA Media Center</Text>
           <Text style={styles.appVersion}>Version 1.0.0</Text>
         </View>
 
@@ -55,7 +55,7 @@ const About = () => {
             <Text style={styles.cardTitle}>About</Text>
           </View>
           <Text style={styles.description}>
-            ECWA Divine Path is a comprehensive mobile application designed to provide
+            ECWA Media Center is a comprehensive mobile application designed to provide
             access to Sunday School lessons, Bible study materials, hymns, and interactive
             quizzes for members of the Evangelical Church Winning All (ECWA).
           </Text>
@@ -111,7 +111,7 @@ const About = () => {
 
         {/* Copyright */}
         <Text style={styles.copyright}>
-          © {new Date().getFullYear()} ECWA Divine Path. All rights reserved.
+          © {new Date().getFullYear()} ECWA Media Center. All rights reserved.
         </Text>
       </ScrollView>
     </View>

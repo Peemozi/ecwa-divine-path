@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   ScrollView,
@@ -8,9 +7,11 @@ import {
   TextInput,
   StyleSheet,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, ChevronRight, Search, Lock } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, useFocusEffect } from "expo-router";
+import { userApi, isSubscriptionError } from "@/src/lib/api";
 
 type Lesson = {
   id: number;
@@ -44,12 +45,20 @@ const SundaySchool: React.FC = () => {
   const checkPayment = async () => {
     setIsCheckingPayment(true);
     try {
-      const paid = await AsyncStorage.getItem("sundaySchoolPaid");
-      const isPaid = paid === "true";
-      setHasPaidAccess(isPaid);
+      // Prefer live subscription status from backend
+      const dash: any = await userApi.getDashboard();
+      const hasAccess = dash?.user?.subscription?.hasAccess === true;
+      setHasPaidAccess(hasAccess);
+      await AsyncStorage.setItem("sundaySchoolPaid", hasAccess ? "true" : "false");
     } catch (error) {
-      console.error("SundaySchool: Failed to read payment flag:", (error as Error).message ?? error);
+      if (isSubscriptionError(error)) {
+        setHasPaidAccess(false);
+        await AsyncStorage.setItem("sundaySchoolPaid", "false");
+        router.replace("/payment");
+        return;
+      }
       setHasPaidAccess(false);
+      await AsyncStorage.setItem("sundaySchoolPaid", "false");
     } finally {
       setIsCheckingPayment(false);
     }

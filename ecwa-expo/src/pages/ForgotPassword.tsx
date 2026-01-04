@@ -13,23 +13,31 @@ import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { Mail, ArrowLeft } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { authApi } from "@/src/lib/api";
+import { useAuthFlow } from "@/src/lib/auth-flow-state";
 
 export default function ForgotPassword() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const { state, setField } = useAuthFlow();
+  const { email } = state;
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendReset = () => {
+  const handleSendReset = async () => {
     if (!email) {
       Toast.show({ type: "error", text1: "Please enter your email" });
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authApi.sendPasswordResetCode(email);
       Toast.show({ type: "success", text1: "Reset code sent! Check your email." });
-      router.replace("/login-email-password");
-    }, 800);
+      router.push({ pathname: "/reset-password-otp", params: { email } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to send reset code";
+      Toast.show({ type: "error", text1: message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -64,7 +72,7 @@ export default function ForgotPassword() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
-              onChangeText={setEmail}
+              onChangeText={(value) => setField("email", value)}
               value={email}
             />
           </View>

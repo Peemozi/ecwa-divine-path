@@ -14,11 +14,13 @@ import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { Lock, ArrowLeft, Mail, Eye, EyeOff } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { authApi, setTokens, userApi } from "@/src/lib/api";
+import { useAuthFlow } from "@/src/lib/auth-flow-state";
 
 export default function LoginEmailPassword() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { state, setField, resetAuthFlow } = useAuthFlow();
+  const { email, password } = state;
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -33,16 +35,53 @@ export default function LoginEmailPassword() {
     }
 
     setIsLoading(true);
+    try {
+      const response = await authApi.login(email, password);
+      await setTokens(response.access_token, response.refresh_token);
+      await AsyncStorage.multiSet([
+        ["userEmail", response.user.email ?? email],
+        ["userName", response.user.name ?? email.split("@")[0]],
+      ]);
 
-    // Mock login flow (backend disabled)
-    setTimeout(async () => {
-      await AsyncStorage.setItem("userEmail", email);
-      await AsyncStorage.setItem("userName", email.split("@")[0]);
-      await AsyncStorage.setItem("apiToken", "mock-token-temp");
-      setIsLoading(false);
+      try {
+        const dash: any = await userApi.getDashboard();
+        if (dash?.user?.name) {
+          await AsyncStorage.setItem("userName", dash.user.name);
+        }
+        if (dash?.user?.email) {
+          await AsyncStorage.setItem("userEmail", dash.user.email);
+        }
+        if (dash?.user?.subscription?.hasAccess !== undefined) {
+          await AsyncStorage.setItem(
+            "sundaySchoolPaid",
+            dash.user.subscription.hasAccess ? "true" : "false"
+          );
+        }
+      } catch (dashError) {
+        // Dashboard preload failed - continue with login
+      }
+
       Toast.show({ type: "success", text1: "Login successful!" });
+      resetAuthFlow();
       router.replace("/(tabs)/dashboard");
-    }, 800);
+    } catch (error) {
+      console.error('[LoginEmailPassword] Login error:', error);
+      let message = error instanceof Error ? error.message : "Login failed";
+      
+      // Provide more helpful error message for network errors
+      if (message.includes('Network request failed') || message.includes('fetch')) {
+        message = "Cannot connect to server. Please check:\n• API server is running\n• Your device is on the same network\n• Check console for API URL";
+      }
+      
+      Toast.show({ 
+        type: "error", 
+        text1: "Login Failed",
+        text2: message,
+        visibilityTime: 5000
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -77,7 +116,7 @@ export default function LoginEmailPassword() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
-              onChangeText={setEmail}
+              onChangeText={(value) => setField("email", value)}
               value={email}
             />
           </View>
@@ -91,7 +130,7 @@ export default function LoginEmailPassword() {
                 placeholderTextColor="#9CA3AF"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
-                onChangeText={setPassword}
+                onChangeText={(value) => setField("password", value)}
                 value={password}
               />
               <TouchableOpacity

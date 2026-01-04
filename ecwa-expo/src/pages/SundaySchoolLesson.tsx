@@ -1,7 +1,6 @@
 // src/assets/pages/SundaySchoolLesson.tsx
 import React, { useEffect, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   ScrollView,
@@ -12,10 +11,12 @@ import {
   ToastAndroid,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, Share2, Bookmark as BookmarkIcon } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { userApi, isSubscriptionError } from "@/src/lib/api";
 
 /* ---------------------------------------------
    MOCK LESSON DATA (trimmed for brevity)
@@ -105,13 +106,20 @@ const SundaySchoolLesson: React.FC = () => {
   useEffect(() => {
     const checkPayment = async () => {
       try {
-        const paidFlag = await AsyncStorage.getItem("sundaySchoolPaid");
-        if (paidFlag !== "true") {
-          router.push("/payment");
+        const dash: any = await userApi.getDashboard();
+        const hasAccess = dash?.user?.subscription?.hasAccess === true;
+        await AsyncStorage.setItem("sundaySchoolPaid", hasAccess ? "true" : "false");
+        if (!hasAccess) {
+          router.replace("/payment");
         }
       } catch (err) {
-        console.error("Payment check failed:", err);
-        router.push("/payment");
+        if (isSubscriptionError(err)) {
+          await AsyncStorage.setItem("sundaySchoolPaid", "false");
+          router.replace("/payment");
+          return;
+        }
+        await AsyncStorage.setItem("sundaySchoolPaid", "false");
+        router.replace("/payment");
       }
     };
     checkPayment();

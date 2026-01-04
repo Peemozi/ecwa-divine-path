@@ -21,7 +21,8 @@ import {
   History,
 } from "lucide-react-native";
 import { Palette, Spacing, Radii, Shadow } from "@/constants/theme";
-// Backend temporarily disabled - import removed
+import { authApi, removeTokens } from "@/src/lib/api";
+import Toast from "react-native-toast-message";
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
 
@@ -48,11 +49,13 @@ export default function MenuPage() {
           text: "Log Out",
           style: "destructive",
           onPress: async () => {
-            // Backend temporarily disabled - just remove local storage
-            await AsyncStorage.removeItem("apiToken");
-            await AsyncStorage.removeItem("userEmail");
-            await AsyncStorage.removeItem("userName");
-            router.replace("/auth");
+            try {
+              await authApi.logout().catch(() => undefined);
+            } finally {
+              await removeTokens();
+              await AsyncStorage.multiRemove(["userEmail", "userName"]);
+              router.replace("/auth");
+            }
           },
         },
       ]
@@ -61,7 +64,18 @@ export default function MenuPage() {
 
   const menuItems = [
     { icon: User, label: "Profile", action: () => router.push("/profile") },
-    { icon: History, label: "Quiz History", action: () => router.push("/quiz-history") },
+    { 
+      icon: History, 
+      label: "Quiz History", 
+      action: () => {
+        Toast.show({
+          type: "success",
+          text1: "Coming Soon",
+          text2: "Quiz History will be available soon.",
+          visibilityTime: 3000,
+        });
+      }
+    },
     { icon: CreditCard, label: "Payment History", action: () => router.push("/payment-history") },
     { icon: Settings, label: "Settings", action: () => router.push("/settings") },
     { icon: HelpCircle, label: "Help & Support", action: () => router.push("/help-support") },
@@ -74,7 +88,7 @@ export default function MenuPage() {
       <View style={styles.header}>
         <Image source={ecwaLogo} style={styles.logo} resizeMode="contain" />
         <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>ECWA Divine Path</Text>
+          <Text style={styles.headerTitle}>ECWA Media Center</Text>
           <Text style={styles.headerSubtitle}>{userEmail}</Text>
         </View>
       </View>

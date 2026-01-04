@@ -1,5 +1,5 @@
 // src/assets/pages/ManualLessons.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,17 +8,13 @@ import {
   FlatList,
   StyleSheet,
   ListRenderItem,
+  ActivityIndicator,
 } from "react-native";
 import { ArrowLeft, Search } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
-
-type Lesson = {
-  id: number;
-  number: number;
-  title: string;
-  topic: string;
-};
+import Toast from "react-native-toast-message";
+import { manualApi, isSubscriptionError } from "@/src/lib/api";
 
 export default function ManualLessons() {
   const router = useRouter();
@@ -34,30 +30,47 @@ export default function ManualLessons() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [backPressed, setBackPressed] = useState(false);
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Auto-generate 52 lessons
-  const lessons: Lesson[] = Array.from({ length: 52 }, (_, i) => ({
-    id: i + 1,
-    number: i + 1,
-    title: `Lesson ${i + 1}`,
-    topic: `Topic for Lesson ${i + 1}`,
-  }));
+  useEffect(() => {
+    const loadLessons = async () => {
+      setIsLoading(true);
+      try {
+        const data = await manualApi.getLessons(type, year, language);
+        setLessons(data ?? []);
+      } catch (error) {
+        if (isSubscriptionError(error)) {
+          router.replace("/payment");
+          return;
+        }
+        Toast.show({
+          type: "error",
+          text1: (error as Error).message || "Failed to load lessons",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadLessons();
+  }, [language, router, type, year]);
 
   const filteredLessons = lessons.filter(
     (lesson) =>
-      lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lesson.topic.toLowerCase().includes(searchQuery.toLowerCase())
+      lesson.topic?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lesson.number?.toString().includes(searchQuery.toLowerCase()) ||
+      lesson.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const title = type === "sunday-school" ? "Sunday School Manual" : "Bible Study Manual";
-  const languageName = language === "english" ? "English" : "Yoruba";
+  const languageName = language?.toLowerCase() === "english" ? "English" : "Yoruba";
 
-  const renderItem: ListRenderItem<Lesson> = ({ item }) => (
+  const renderItem: ListRenderItem<any> = ({ item }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() =>
         router.push({
-          pathname: "/manual-lesson",
+          pathname: "/(tabs)/manuals/lesson",
           params: {
             type,
             year,
@@ -72,10 +85,14 @@ export default function ManualLessons() {
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={styles.lessonTitle}>{item.title}</Text>
-        <Text style={styles.lessonTopic} numberOfLines={1}>
-          {item.topic}
+        <Text style={styles.lessonTitle}>
+          {item.title || `Lesson ${item.number}`}
         </Text>
+        {item.topic && (
+          <Text style={styles.lessonTopic} numberOfLines={2}>
+            {item.topic}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -84,7 +101,10 @@ export default function ManualLessons() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push({
+            pathname: "/(tabs)/manuals/language",
+            params: { type, year },
+          })}
           onPressIn={() => setBackPressed(true)}
           onPressOut={() => setBackPressed(false)}
           style={styles.iconButton}
@@ -115,13 +135,27 @@ export default function ManualLessons() {
         />
       </View>
 
-      <FlatList
-        data={filteredLessons}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-      />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Palette.accent} />
+          <Text style={styles.loadingText}>Loading lessons...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredLessons}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            !isLoading ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No lessons found.</Text>
+              </View>
+            ) : null
+          }
+        />
+      )}
     </View>
   );
 }
@@ -175,6 +209,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: Spacing.lg,
     gap: Spacing.md,
+    paddingBottom: 90, // Add padding for bottom tab bar
   },
 
   card: {
@@ -198,7 +233,31 @@ const styles = StyleSheet.create({
 
   numberText: { fontSize: 18, fontWeight: "700", color: "#1e40af" },
 
-  lessonTitle: { fontSize: 16, fontWeight: "600", color: Palette.textDefault },
+  lessonTitle: { fontSize: 16, fontWeight: "600", color: Palette.textDefault, marginBottom: 4 },
 
   lessonTopic: { fontSize: 13, color: Palette.textMuted, marginTop: 2 },
+  
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: Spacing.xxl * 2,
+  },
+  
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 14,
+    color: Palette.textMuted,
+  },
+  
+  emptyContainer: {
+    paddingVertical: Spacing.xxl * 2,
+    alignItems: "center",
+  },
+  
+  emptyText: {
+    fontSize: 14,
+    color: Palette.textMuted,
+    textAlign: "center",
+  },
 });

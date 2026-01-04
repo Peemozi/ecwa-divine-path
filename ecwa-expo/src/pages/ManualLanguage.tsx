@@ -1,15 +1,18 @@
 // src/assets/pages/ManualLanguage.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   FlatList,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { manualApi, isSubscriptionError } from "@/src/lib/api";
+import Toast from "react-native-toast-message";
 
 export default function ManualLanguage() {
   const router = useRouter();
@@ -17,11 +20,31 @@ export default function ManualLanguage() {
   const type = Array.isArray(params.type) ? params.type[0] ?? "" : params.type ?? "";
   const year = Array.isArray(params.year) ? params.year[0] ?? "" : params.year ?? "";
   const [backPressed, setBackPressed] = useState(false);
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const languages = [
-    { code: "english", name: "English", flag: "🇬🇧" },
-    { code: "yoruba", name: "Yoruba", flag: "🇳🇬" },
-  ];
+  useEffect(() => {
+    const loadLanguages = async () => {
+      if (!type || !year) return;
+      setIsLoading(true);
+      try {
+        const data = await manualApi.getLanguages(type, year);
+        setLanguages(data ?? []);
+      } catch (error) {
+        if (isSubscriptionError(error)) {
+          router.replace("/payment");
+          return;
+        }
+        Toast.show({
+          type: "error",
+          text1: (error as Error).message || "Failed to load languages",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadLanguages();
+  }, [router, type, year]);
 
   const title = type === "sunday-school" ? "Sunday School Manual" : "Bible Study Manual";
 
@@ -29,7 +52,10 @@ export default function ManualLanguage() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push({
+            pathname: "/(tabs)/manuals/years",
+            params: { type },
+          })}
           onPressIn={() => setBackPressed(true)}
           onPressOut={() => setBackPressed(false)}
           style={styles.backButton}
@@ -49,37 +75,49 @@ export default function ManualLanguage() {
         </View>
       </View>
 
-      <FlatList
-        data={languages}
-        keyExtractor={(item) => item.code}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() =>
-              router.push({
-                pathname: "/manual-lessons",
-                params: {
-                  type,
-                  year,
-                  language: item.code,
-                },
-              })
-            }
-          >
-            <View style={styles.flagContainer}>
-              <Text style={styles.flag}>{item.flag}</Text>
-            </View>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Palette.accent} />
+          <Text style={styles.loadingText}>Loading languages...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={languages}
+          keyExtractor={(item) => item}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                router.push({
+                  pathname: "/(tabs)/manuals/lessons",
+                  params: {
+                    type,
+                    year,
+                    language: item,
+                  },
+                })
+              }
+            >
+              <View style={styles.flagContainer}>
+                <Text style={styles.flag}>🌐</Text>
+              </View>
 
-            <View style={styles.cardText}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.subtitle}>
-                {title} in {item.name}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+              <View style={styles.cardText}>
+                <Text style={styles.name}>{item}</Text>
+                <Text style={styles.subtitle}>
+                  {title} in {item}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            !isLoading ? (
+              <Text style={styles.emptyText}>No languages found.</Text>
+            ) : null
+          }
+        />
+      )}
     </View>
   );
 }
@@ -131,4 +169,21 @@ const styles = StyleSheet.create({
   cardText: { marginLeft: 14 },
   name: { fontSize: 16, fontWeight: "600", color: Palette.textDefault },
   subtitle: { fontSize: 13, color: Palette.textMuted },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: Spacing.xxl,
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 14,
+    color: Palette.textMuted,
+  },
+  emptyText: {
+    textAlign: "center",
+    color: Palette.textMuted,
+    fontSize: 14,
+    paddingVertical: Spacing.xxl,
+  },
 });

@@ -1,17 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { ArrowLeft, Bookmark, Share2 } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
+import { manualApi, isSubscriptionError } from "@/src/lib/api";
+import Toast from "react-native-toast-message";
+import { HTMLRenderer } from "@/src/lib/html-renderer";
+import { useFontSize } from "@/src/lib/font-size-context";
 
 const ManualLesson = () => {
   const router = useRouter();
+  const { getScaledSize } = useFontSize();
   const params = useLocalSearchParams<{
     type?: string | string[];
     year?: string | string[];
@@ -25,48 +31,149 @@ const ManualLesson = () => {
 
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [backPressed, setBackPressed] = useState(false);
+  const [lesson, setLesson] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock data — replace with API later
-  const lesson = {
-    number: lessonId,
-    topic: "LOVE OF MONEY: AN END TIME CANKERWORM",
-    texts: "2 Timothy 3:1–5, 1 Timothy 6:6–10",
-    aim: "To help believers understand the dangers of the love of money and to encourage them to pursue godliness with contentment.",
-    introduction:
-      "The love of money is one of the most dangerous spiritual diseases affecting believers today. It has led many astray from the faith and caused them untold suffering.",
-    sections: [
-      {
-        title: "THE NATURE OF THE LOVE OF MONEY",
-        points: [
-          {
-            label: "A",
-            content: "It is a root of all kinds of evil (1 Timothy 6:10)",
-          },
-          { label: "B", content: "It causes people to wander from the faith" },
-        ],
-      },
-      {
-        title: "BIBLICAL WARNINGS AGAINST THE LOVE OF MONEY",
-        points: [
-          {
-            label: "A",
-            content: "Jesus warned about serving two masters (Matthew 6:24)",
-          },
-          {
-            label: "B",
-            content: "Paul's instructions to Timothy about contentment",
-          },
-        ],
-      },
-    ],
-    conclusion:
-      "Believers must guard their hearts against the love of money and instead pursue godliness with contentment, trusting in God's provision.",
-    memoryVerse:
-      "For the love of money is the root of all evil... - 1 Timothy 6:10",
-  };
+  useEffect(() => {
+    const loadLesson = async () => {
+      setIsLoading(true);
+      try {
+        const data = await manualApi.getLessonDetail(type, year, language, lessonId);
+        setLesson(data);
+      } catch (error) {
+        if (isSubscriptionError(error)) {
+          router.replace("/payment");
+          return;
+        }
+        const errorMessage = (error as Error).message || "Failed to load lesson";
+        console.error('[ManualLesson] Error loading lesson:', errorMessage, { type, year, language, lessonId });
+        Toast.show({
+          type: "error",
+          text1: "Lesson Not Found",
+          text2: `Unable to load lesson ${lessonId}. Please try again.`,
+          visibilityTime: 4000,
+        });
+        router.back();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadLesson();
+  }, [language, lessonId, router, type, year]);
 
   const title =
     type === "sunday-school" ? "Sunday School Manual" : "Bible Study Manual";
+
+  // Helper function to extract conclusion and memory verse from content if embedded
+  const extractSections = (content: string | undefined | null) => {
+    if (!content) return { content: '', conclusion: '', memoryVerse: '' };
+    
+    let cleanContent = content;
+    let extractedConclusion = '';
+    let extractedMemoryVerse = '';
+    
+    // More comprehensive patterns to match conclusion and memory verse sections
+    // Handle various HTML and text formats
+    // Supports both English and Yoruba labels
+    
+    // Memory Verse patterns (extract first since it's usually at the end)
+    // ONLY English: "MEMORY VERSE" - Do NOT extract Yoruba labels
+    const memoryVersePatterns = [
+      // HTML heading patterns - English
+      /<h[1-6][^>]*>\s*MEMORY\s*VERSE:?\s*<\/h[1-6]>[\s\S]*?$/i,
+      // HTML paragraph with strong/bold - English
+      /<p[^>]*>\s*<strong[^>]*>\s*MEMORY\s*VERSE:?\s*<\/strong>\s*<\/p>[\s\S]*?$/i,
+      // Plain text patterns - English (with capture group)
+      /MEMORY\s*VERSE:?\s*[\n\r]+(.*?)$/is,
+      /MEMORY\s*VERSE:?\s*(.*?)$/is,
+      // HTML div/section patterns - English
+      /<div[^>]*>\s*MEMORY\s*VERSE:?\s*<\/div>[\s\S]*?$/i,
+      // Additional patterns for variations - English
+      /<strong[^>]*>\s*MEMORY\s*VERSE:?\s*<\/strong>[\s\S]*?$/i,
+      /<b[^>]*>\s*MEMORY\s*VERSE:?\s*<\/b>[\s\S]*?$/i,
+    ];
+    
+    // Conclusion patterns
+    // ONLY English: "CONCLUSION" - Do NOT extract Yoruba labels
+    const conclusionPatterns = [
+      // HTML heading patterns - English
+      /<h[1-6][^>]*>\s*CONCLUSION:?\s*<\/h[1-6]>[\s\S]*?(?=<h[1-6]|MEMORY\s*VERSE|$)/i,
+      // HTML paragraph with strong/bold - English
+      /<p[^>]*>\s*<strong[^>]*>\s*CONCLUSION:?\s*<\/strong>\s*<\/p>[\s\S]*?(?=<p[^>]*>MEMORY|MEMORY\s*VERSE|$)/i,
+      // Plain text patterns - English (with capture group)
+      /CONCLUSION:?\s*[\n\r]+(.*?)(?=MEMORY\s*VERSE|$)/is,
+      /CONCLUSION:?\s*(.*?)(?=MEMORY\s*VERSE|$)/is,
+      // HTML div/section patterns - English
+      /<div[^>]*>\s*CONCLUSION:?\s*<\/div>[\s\S]*?(?=<div[^>]*>MEMORY|MEMORY\s*VERSE|$)/i,
+      // Additional patterns for variations - English
+      /<strong[^>]*>\s*CONCLUSION:?\s*<\/strong>[\s\S]*?(?=MEMORY\s*VERSE|$)/i,
+      /<b[^>]*>\s*CONCLUSION:?\s*<\/b>[\s\S]*?(?=MEMORY\s*VERSE|$)/i,
+    ];
+    
+    // Extract memory verse first (usually at the end)
+    for (let i = 0; i < memoryVersePatterns.length; i++) {
+      const pattern = memoryVersePatterns[i];
+      const match = cleanContent.match(pattern);
+      if (match && match[0]) {
+        // Extract the content after the label (English only)
+        let verseContent = match[1] || match[0];
+        // Remove the English label only
+        verseContent = verseContent
+          .replace(/MEMORY\s*VERSE:?\s*/i, '')
+          .trim();
+        if (verseContent && verseContent.length > 10) { // Ensure it's not just whitespace
+          extractedMemoryVerse = verseContent;
+          // Remove memory verse from content
+          cleanContent = cleanContent.replace(pattern, '').trim();
+          break;
+        }
+      }
+    }
+    
+    // Extract conclusion (usually before memory verse)
+    for (let i = 0; i < conclusionPatterns.length; i++) {
+      const pattern = conclusionPatterns[i];
+      const match = cleanContent.match(pattern);
+      if (match && match[0]) {
+        // Extract the content after the label (English only)
+        let conclusionContent = match[1] || match[0];
+        // Remove the English label and stop before memory verse
+        conclusionContent = conclusionContent
+          .replace(/CONCLUSION:?\s*/i, '')
+          .replace(/MEMORY\s*VERSE.*$/is, '')
+          .trim();
+        if (conclusionContent && conclusionContent.length > 10) { // Ensure it's not just whitespace
+          extractedConclusion = conclusionContent;
+          // Remove conclusion from content
+          cleanContent = cleanContent.replace(pattern, '').trim();
+          break;
+        }
+      }
+    }
+    
+    return {
+      content: cleanContent.trim(),
+      conclusion: extractedConclusion.trim(),
+      memoryVerse: extractedMemoryVerse.trim(),
+    };
+  };
+
+  // Helper function to render content (HTML or plain text)
+  const renderContent = (content: string | undefined | null, style?: any) => {
+    if (!content) return null;
+    // Check if current language is Yoruba
+    const isYoruba = language.toLowerCase() === 'yoruba' || language.toLowerCase() === 'yorùbá';
+    return <HTMLRenderer html={content} baseStyle={style || styles.sectionContent} isYoruba={isYoruba} />;
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={Palette.accent} />
+        <Text style={styles.loadingText}>Loading lesson...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -74,7 +181,10 @@ const ManualLesson = () => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerButton}
-          onPress={() => router.back()}
+          onPress={() => router.push({
+            pathname: "/(tabs)/manuals/lessons",
+            params: { type, year, language },
+          })}
           onPressIn={() => setBackPressed(true)}
           onPressOut={() => setBackPressed(false)}
           activeOpacity={0.7}
@@ -91,13 +201,13 @@ const ManualLesson = () => {
           </Text>
 
           <Text style={styles.headerSubtitle}>
-            Lesson {lesson.number}
+            Lesson {lesson?.number ?? lessonId}
           </Text>
 
           {/* LANGUAGE USED HERE */}
-          <Text style={styles.headerSubtitleLanguage}>
-            {language === "english" ? "English Version" : "Yoruba Version"}
-          </Text>
+            <Text style={styles.headerSubtitleLanguage}>
+              {language} Version
+            </Text>
         </View>
 
         <TouchableOpacity style={styles.headerButton} activeOpacity={0.7}>
@@ -121,77 +231,110 @@ const ManualLesson = () => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           {/* TOPIC CARD */}
-          <View style={styles.card}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Lesson {lesson.number}</Text>
-            </View>
+            <View style={styles.card}>
+              <View style={styles.badge}>
+                <Text style={[styles.badgeText, { fontSize: getScaledSize(12) }]}>Lesson {lesson?.number ?? lessonId}</Text>
+              </View>
 
-            <Text style={styles.topicTitle}>
-              {lesson.topic}
-            </Text>
-
-            <Text style={styles.texts}>
-              <Text style={styles.textsLabel}>Texts:</Text> {lesson.texts}
-            </Text>
-          </View>
-
-          {/* AIM */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              Aim
-            </Text>
-            <Text style={styles.sectionContent}>
-              {lesson.aim}
-            </Text>
-          </View>
-
-          {/* INTRODUCTION */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              Introduction
-            </Text>
-            <Text style={styles.sectionContent}>
-              {lesson.introduction}
-            </Text>
-          </View>
-
-          {/* SECTIONS */}
-          {lesson.sections.map((section, idx) => (
-            <View key={idx} style={styles.card}>
-              <Text style={styles.sectionTitle}>
-                {section.title}
+              <Text style={[styles.topicTitle, { fontSize: getScaledSize(24) }]}>
+                {lesson?.topic || lesson?.title || "Lesson"}
               </Text>
 
-              <View style={styles.pointsContainer}>
-                {section.points.map((point, pIdx) => (
-                  <Text key={pIdx} style={styles.point}>
-                    <Text style={styles.pointLabel}>{point.label}.</Text>{" "}
-                    {point.content}
-                  </Text>
-                ))}
+              <Text style={[styles.texts, { fontSize: getScaledSize(14) }]}>
+                <Text style={styles.textsLabel}>Texts:</Text> {lesson?.bible_text || lesson?.texts || "—"}
+              </Text>
+            </View>
+
+          {/* AIM - Separate Card */}
+          {lesson?.aim && (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Aim</Text>
+              <View style={styles.sectionBody}>
+                {renderContent(lesson.aim)}
               </View>
             </View>
-          ))}
+          )}
 
-          {/* CONCLUSION */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              Conclusion
-            </Text>
-            <Text style={styles.sectionContent}>
-              {lesson.conclusion}
-            </Text>
-          </View>
+          {/* INTRODUCTION - Separate Card */}
+          {lesson?.introduction && (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Introduction</Text>
+              <View style={styles.sectionBody}>
+                {renderContent(lesson.introduction)}
+              </View>
+            </View>
+          )}
 
-          {/* MEMORY VERSE */}
-          <View style={[styles.card, styles.memoryVerseCard]}>
-            <Text style={styles.memoryVerseTitle}>
-              Memory Verse
-            </Text>
-            <Text style={styles.memoryVerseText}>
-              {lesson.memoryVerse}
-            </Text>
-          </View>
+          {/* MAIN CONTENT - Separate Card */}
+          {(() => {
+            // Extract conclusion and memory verse from content if embedded
+            const extracted = extractSections(lesson?.content);
+            
+            // Prioritize API fields, fall back to extracted values
+            const displayContent = extracted.content || lesson?.content || '';
+            const displayConclusion = lesson?.conclusion || extracted.conclusion || '';
+            const displayMemoryVerse = lesson?.memory_verse || extracted.memoryVerse || '';
+            
+            return (
+              <>
+                {displayContent && displayContent.trim().length > 0 && (
+                  <View style={styles.sectionCard}>
+                    <Text style={[styles.sectionTitle, { fontSize: getScaledSize(20) }]}>Content</Text>
+                    <View style={styles.sectionBody}>
+                      {renderContent(displayContent)}
+                    </View>
+                  </View>
+                )}
+                
+                {/* CONCLUSION - Separate Card (extracted or from API) */}
+                {displayConclusion && displayConclusion.trim().length > 0 && (
+                  <View style={styles.sectionCard}>
+                    <Text style={[styles.sectionTitle, { fontSize: getScaledSize(20) }]}>Conclusion</Text>
+                    <View style={styles.sectionBody}>
+                      {renderContent(displayConclusion)}
+                    </View>
+                  </View>
+                )}
+
+                {/* MEMORY VERSE - Separate Card (extracted or from API) */}
+                {displayMemoryVerse && displayMemoryVerse.trim().length > 0 && (
+                  <View style={[styles.sectionCard, styles.memoryVerseCard]}>
+                    <Text style={[styles.memoryVerseTitle, { fontSize: getScaledSize(20) }]}>Memory Verse</Text>
+                    <View style={styles.sectionBody}>
+                      {renderContent(displayMemoryVerse, styles.memoryVerseText)}
+                    </View>
+                  </View>
+                )}
+              </>
+            );
+          })()}
+
+          {/* SECTIONS / OUTLINE - Separate Cards (if available) */}
+          {Array.isArray(lesson?.sections) && lesson.sections.length > 0
+            ? lesson.sections.map((section: any, idx: number) => (
+                <View key={idx} style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>
+                    {section.title || section.heading || `Section ${idx + 1}`}
+                  </Text>
+                  <View style={styles.sectionBody}>
+                    {section.content && renderContent(section.content)}
+                    <View style={styles.pointsContainer}>
+                      {(section.points || section.items || section.subPoints || []).map((point: any, pIdx: number) => (
+                        <View key={pIdx} style={styles.pointWrapper}>
+                          {renderContent(
+                            typeof point === 'string' 
+                              ? point 
+                              : (point.content || point.text || String(point)),
+                            styles.point
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              ))
+            : null}
+
         </View>
       </ScrollView>
     </View>
@@ -246,7 +389,7 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
     paddingBottom: Spacing.xxl * 2,
-    gap: Spacing.lg,
+    gap: Spacing.md,
   },
   card: {
     borderRadius: Radii.lg,
@@ -255,6 +398,18 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     backgroundColor: Palette.background,
     ...Shadow.cardSoft,
+    marginBottom: 0,
+  },
+  sectionCard: {
+    borderRadius: Radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#e4e7f2",
+    padding: Spacing.lg,
+    backgroundColor: Palette.background,
+    ...Shadow.cardSoft,
+  },
+  sectionBody: {
+    marginTop: Spacing.sm,
   },
   badge: {
     alignSelf: "flex-start",
@@ -285,22 +440,25 @@ const styles = StyleSheet.create({
     color: Palette.textDefault,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
-    marginBottom: Spacing.md,
+    marginBottom: 0,
     color: Palette.textDefault,
+    letterSpacing: -0.3,
   },
   sectionContent: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 17, // Increased from 16 for better readability
+    lineHeight: 28, // Increased from 26 for better line spacing, especially for Yoruba diacritics
     color: Palette.textDefault,
+    marginTop: 0,
   },
   pointsContainer: {
-    gap: Spacing.md,
+    marginTop: Spacing.sm,
+    gap: Spacing.xs,
   },
   point: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 26,
     color: Palette.textDefault,
   },
   pointLabel: {
@@ -310,18 +468,32 @@ const styles = StyleSheet.create({
   memoryVerseCard: {
     backgroundColor: "#f0f9ff",
     borderColor: "#bae6fd",
+    borderWidth: 1,
   },
   memoryVerseTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
-    marginBottom: Spacing.md,
+    marginBottom: 0,
     color: "#0369a1",
+    letterSpacing: -0.3,
   },
   memoryVerseText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 17, // Increased from 16 for consistency
+    lineHeight: 28, // Increased from 26 for better readability
     fontStyle: "italic",
     color: Palette.textDefault,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 14,
+    color: Palette.textMuted,
+  },
+  pointWrapper: {
+    marginBottom: 0,
   },
 });
 

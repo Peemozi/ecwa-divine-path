@@ -51,7 +51,6 @@ const Payment = () => {
       );
 
       // result.type can be "cancel", "dismiss", "opened"
-      console.log("Browser Result:", result); // <-- RESULT NOW USED
 
       // 3️⃣ After closing browser, mark as success
       // (You can verify from backend if needed)
@@ -60,7 +59,6 @@ const Payment = () => {
       setIsSuccess(true);
 
     } catch (error) {
-      console.log("Payment Error:", error);
       Alert.alert("Error", "Payment could not be completed.");
       setIsProcessing(false);
     }
@@ -79,7 +77,26 @@ const Payment = () => {
 
         <TouchableOpacity
           style={styles.successButton}
-          onPress={() => router.replace("/sunday-school-years")}
+          onPress={async () => {
+            // Check if there's a pending navigation destination
+            const pendingNav = await AsyncStorage.getItem("pendingNavigation");
+            if (pendingNav) {
+              try {
+                const navParams = JSON.parse(pendingNav);
+                // Clear the pending navigation
+                await AsyncStorage.removeItem("pendingNavigation");
+                // Navigate to the stored destination
+                router.replace(navParams);
+              } catch (error) {
+                console.error("Error parsing pending navigation:", error);
+                // Fallback to default navigation
+                router.replace("/sunday-school-years");
+              }
+            } else {
+              // No pending navigation, go to default
+              router.replace("/sunday-school-years");
+            }
+          }}
         >
           <Text style={styles.successButtonText}>
             View Sunday School Lessons
@@ -144,6 +161,7 @@ const Payment = () => {
           onPress={async () => {
             await AsyncStorage.setItem("sundaySchoolPaid", "true");
             setIsSuccess(true);
+            // Note: Navigation will be handled in the success UI
           }}
         >
           <Text style={styles.testButtonText}>Skip Payment (Test Mode)</Text>
