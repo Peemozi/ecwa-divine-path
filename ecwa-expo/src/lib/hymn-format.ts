@@ -11,7 +11,7 @@ export type FormattedHymn = {
   number?: string | number;
   language?: string;
   chorus?: string | null;
-  verses: Array<{ label?: string; text: string; type?: 'verse' | 'chorus' }>;
+  verses: { label?: string; text: string; type?: 'verse' | 'chorus' }[];
 };
 
 export const formatHymn = (raw: any): FormattedHymn => {

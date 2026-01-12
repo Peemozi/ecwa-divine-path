@@ -14,7 +14,7 @@ import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { Lock, ArrowLeft, Mail, Eye, EyeOff } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
-import { authApi, setTokens, userApi } from "@/src/lib/api";
+import { authApi, setTokens, userApi, clearAllUserData } from "@/src/lib/api";
 import { useAuthFlow } from "@/src/lib/auth-flow-state";
 
 export default function LoginEmailPassword() {
@@ -36,6 +36,9 @@ export default function LoginEmailPassword() {
 
     setIsLoading(true);
     try {
+      // Clear any old user data first to prevent data from previous user showing
+      await clearAllUserData();
+      
       const response = await authApi.login(email, password);
       await setTokens(response.access_token, response.refresh_token);
       await AsyncStorage.multiSet([
@@ -57,7 +60,7 @@ export default function LoginEmailPassword() {
             dash.user.subscription.hasAccess ? "true" : "false"
           );
         }
-      } catch (dashError) {
+      } catch (_dashError) {
         // Dashboard preload failed - continue with login
       }
 
@@ -65,18 +68,32 @@ export default function LoginEmailPassword() {
       resetAuthFlow();
       router.replace("/(tabs)/dashboard");
     } catch (error) {
-      console.error('[LoginEmailPassword] Login error:', error);
-      let message = error instanceof Error ? error.message : "Login failed";
+      // Extract error message - backend errors are already formatted
+      let errorMessage = "Login failed";
+      let errorTitle = "Login Failed";
       
-      // Provide more helpful error message for network errors
-      if (message.includes('Network request failed') || message.includes('fetch')) {
-        message = "Cannot connect to server. Please check:\n• API server is running\n• Your device is on the same network\n• Check console for API URL";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Format common error messages for better UX
+        if (errorMessage.toLowerCase().includes('invalid') && 
+            (errorMessage.toLowerCase().includes('email') || errorMessage.toLowerCase().includes('password'))) {
+          errorTitle = "Invalid Credentials";
+          errorMessage = "Invalid email or password. Please check your credentials and try again.";
+        } else if (errorMessage.toLowerCase().includes('not found') || 
+                   errorMessage.toLowerCase().includes('does not exist')) {
+          errorTitle = "Account Not Found";
+          errorMessage = "No account found with this email address. Please check your email or create an account.";
+        } else if (errorMessage.includes('Network request failed') || errorMessage.includes('fetch')) {
+          errorTitle = "Connection Error";
+          errorMessage = "Cannot connect to server. Please check your internet connection and try again.";
+        }
       }
       
       Toast.show({ 
         type: "error", 
-        text1: "Login Failed",
-        text2: message,
+        text1: errorTitle,
+        text2: errorMessage,
         visibilityTime: 5000
       });
     } finally {

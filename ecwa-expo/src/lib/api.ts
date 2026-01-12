@@ -4,6 +4,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { triggerSessionExpired } from './session-expired-context';
 
 // Toggle real API calls
 const USE_API = true;
@@ -114,13 +115,29 @@ export const removeTokens = async (): Promise<void> => {
 };
 
 /**
+ * Clear all user-related data from AsyncStorage
+ * This should be called on logout to ensure no user data persists
+ */
+export const clearAllUserData = async (): Promise<void> => {
+  await AsyncStorage.multiRemove([
+    'userEmail',
+    'userName',
+    'userPhone',
+    'userDcc',
+    'userLcb',
+    'sundaySchoolPaid',
+    'app_navigation_state', // Clear saved navigation state
+  ]);
+};
+
+/**
  * Update last activity timestamp
  */
 export const updateLastActivity = async (): Promise<void> => {
   try {
     const now = Date.now().toString();
     await AsyncStorage.setItem('lastActivity', now);
-  } catch (error) {
+  } catch (_error) {
     // Ignore storage errors
   }
 };
@@ -141,11 +158,10 @@ export const isTokenExpired = async (): Promise<boolean> => {
     }
     
     const now = Date.now();
-    const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
     const daysSinceActivity = (now - lastActivity) / (24 * 60 * 60 * 1000);
     
     return daysSinceActivity > 30;
-  } catch (error) {
+  } catch (_error) {
     return true; // On error, consider expired
   }
 };
@@ -223,19 +239,22 @@ async function refreshAccessToken(): Promise<string | null> {
       });
 
       if (!response.ok) {
-        // Refresh token is invalid or expired
+        // Refresh token is invalid or expired (after 30 days)
         await removeTokens();
         return null;
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
+      
       if (data.access_token && data.refresh_token) {
+        // Store new tokens (refresh token is valid for 30 days from backend)
         await setTokens(data.access_token, data.refresh_token);
         return data.access_token;
       }
 
+      await removeTokens();
       return null;
-    } catch (error) {
+    } catch (_error) {
       await removeTokens();
       return null;
     } finally {
@@ -246,6 +265,15 @@ async function refreshAccessToken(): Promise<string | null> {
 
   return refreshPromise;
 }
+
+/**
+ * Debug function to verify refresh token is stored
+ * Call this in development to check if refresh token exists
+ */
+export const verifyRefreshToken = async (): Promise<boolean> => {
+  const refreshToken = await getRefreshToken();
+  return !!refreshToken;
+};
 
 async function apiRequest<T>(
   endpoint: string,
@@ -285,6 +313,7 @@ async function apiRequest<T>(
     if (!response.ok) {
       // Handle 401 Unauthorized - try to refresh token
       if (response.status === 401 && retryOn401 && !endpoint.includes('/auth/refresh')) {
+        // Access token expired - try to refresh using refresh token (valid for 30 days)
         const newAccessToken = await refreshAccessToken();
         if (newAccessToken) {
           // Retry the original request with new token
@@ -305,38 +334,66 @@ async function apiRequest<T>(
             headers: updatedHeaders,
           };
 
-          const retryResponse = await fetch(url, retryConfig);
-          if (!retryResponse.ok) {
-            // Still failed after refresh - parse error
-            let errorMessage = 'Request failed';
-            let errorCode: string | undefined;
-            try {
-              const errorData = await retryResponse.json();
-              if (Array.isArray(errorData)) {
-                errorMessage = errorData[0] || 'An error occurred';
-              } else if (errorData.message) {
-                errorMessage = errorData.message;
-              } else if (errorData.error) {
-                errorMessage = typeof errorData.error === 'string' ? errorData.error : errorData.error[0] || 'An error occurred';
-              }
-              if (errorData?.code) {
-                errorCode = errorData.code;
-              }
-            } catch (parseError) {
-              errorMessage = retryResponse.statusText || `Server error (${retryResponse.status})`;
-            }
-            throw buildApiError(errorMessage, errorCode, retryResponse.status);
-          }
-
-          // Success after retry - parse and return
           try {
-            const retryData = await retryResponse.json();
-            return retryData;
-          } catch (parseError) {
-            throw new Error('Invalid response from server');
+            const retryResponse = await fetch(url, retryConfig);
+            if (!retryResponse.ok) {
+              // Still failed after refresh - parse error
+              let errorMessage = 'Request failed';
+              let errorCode: string | undefined;
+              try {
+                const errorData = await retryResponse.json() as any;
+                
+                // Handle Laravel validation errors format
+                if (errorData.errors && typeof errorData.errors === 'object') {
+                  const firstErrorField = Object.keys(errorData.errors)[0];
+                  const firstErrorMessages = errorData.errors[firstErrorField];
+                  if (Array.isArray(firstErrorMessages) && firstErrorMessages.length > 0) {
+                    errorMessage = firstErrorMessages[0];
+                  } else if (typeof firstErrorMessages === 'string') {
+                    errorMessage = firstErrorMessages;
+                  } else if (errorData.message) {
+                    errorMessage = errorData.message;
+                  }
+                }
+                else if (Array.isArray(errorData)) {
+                  errorMessage = errorData[0] || 'An error occurred';
+                } else if (errorData.message) {
+                  errorMessage = errorData.message;
+                } else if (errorData.error) {
+                  errorMessage = typeof errorData.error === 'string' ? errorData.error : errorData.error[0] || 'An error occurred';
+                }
+                if (errorData?.code) {
+                  errorCode = errorData.code;
+                }
+              } catch (_parseError) {
+                if (retryResponse.status === 401) {
+                  // If still 401 after refresh, refresh token is invalid
+                  errorMessage = 'Session expired. Please log in again.';
+                  errorCode = 'UNAUTHORIZED';
+                } else {
+                  errorMessage = retryResponse.statusText || `Server error (${retryResponse.status})`;
+                }
+              }
+              throw buildApiError(errorMessage, errorCode, retryResponse.status);
+            }
+
+            // Success after retry - parse and return
+            try {
+              const retryData = await retryResponse.json() as T;
+              return retryData;
+            } catch (_parseError) {
+              throw new Error('Invalid response from server');
+            }
+          } catch (retryError) {
+            // If retry also fails, throw the error
+            throw retryError;
           }
         } else {
-          // Refresh failed - tokens are invalid
+          // Refresh failed - tokens are invalid or expired
+          // Remove tokens to force re-login
+          await removeTokens();
+          // Trigger session expired modal
+          triggerSessionExpired();
           throw buildApiError('Session expired. Please log in again.', 'UNAUTHORIZED', 401);
         }
       }
@@ -345,30 +402,61 @@ async function apiRequest<T>(
       let errorMessage = 'Request failed';
       let errorCode: string | undefined;
       try {
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          errorMessage = data[0] || 'An error occurred';
-        } else if (data.message) {
-          errorMessage = data.message;
-        } else if (data.error) {
-          errorMessage = typeof data.error === 'string' ? data.error : data.error[0] || 'An error occurred';
+        const data = await response.json() as any;
+        
+        // Handle Laravel validation errors format: {message: "...", errors: {field: ["error"]}}
+        if (data.errors && typeof data.errors === 'object') {
+          // Extract first validation error from errors object
+          const firstErrorField = Object.keys(data.errors)[0];
+          const firstErrorMessages = data.errors[firstErrorField];
+          if (Array.isArray(firstErrorMessages) && firstErrorMessages.length > 0) {
+            errorMessage = firstErrorMessages[0];
+          } else if (typeof firstErrorMessages === 'string') {
+            errorMessage = firstErrorMessages;
+          } else if (data.message) {
+            errorMessage = data.message;
+          }
         }
+        // Handle array of error messages (common in Laravel)
+        else if (Array.isArray(data)) {
+          errorMessage = data[0] || 'An error occurred';
+        }
+        // Handle direct message field
+        else if (data.message) {
+          errorMessage = data.message;
+        }
+        // Handle error field (could be string or array)
+        else if (data.error) {
+          if (typeof data.error === 'string') {
+            errorMessage = data.error;
+          } else if (Array.isArray(data.error) && data.error.length > 0) {
+            errorMessage = data.error[0];
+          }
+        }
+        
+        // Extract error code if available
         if (data?.code) {
           errorCode = data.code;
         }
-      } catch (parseError) {
-        // If JSON parsing fails, use status text
-        errorMessage = response.statusText || `Server error (${response.status})`;
+      } catch (_parseError) {
+        // If JSON parsing fails, use status text or default message
+        if (response.status === 401) {
+          errorMessage = 'Invalid email or password';
+        } else if (response.status === 422) {
+          errorMessage = 'Validation error. Please check your input.';
+        } else {
+          errorMessage = response.statusText || `Server error (${response.status})`;
+        }
       }
       
       throw buildApiError(errorMessage, errorCode, response.status);
     }
 
     // Parse JSON response
-    let data;
+    let data: T;
     try {
-      data = await response.json();
-    } catch (parseError) {
+      data = await response.json() as T;
+    } catch (_parseError) {
       throw new Error('Invalid response from server');
     }
 
@@ -376,37 +464,11 @@ async function apiRequest<T>(
   } catch (error) {
     // Handle network errors specifically
     if (error instanceof TypeError && error.message.includes('fetch')) {
-      const helpfulMessage = `Network request failed. 
-      
-Troubleshooting:
-1. Ensure your API server is running on port 8000
-2. Check the API URL: ${API_BASE_URL}
-3. For mobile devices, verify your computer's IP address
-4. Test in browser: ${API_BASE_URL.replace('/api', '')}
-5. Check console logs for detected IP address
-
-Current API URL: ${API_BASE_URL}`;
-      
-      console.error('[API] Network request failed:', {
-        url,
-        apiBaseUrl: API_BASE_URL,
-        rawApiBaseUrl: RAW_API_BASE_URL,
-        detectedHost: derivedHost || 'none',
-        error: error instanceof Error ? error.message : String(error)
-      });
-      
+      const helpfulMessage = 'Network request failed. Please check your internet connection and try again.';
       throw buildApiError(helpfulMessage);
     }
     if (error instanceof Error) {
-      const apiErr = error as ApiError;
-      if (!apiErr.status) apiErr.status = undefined;
-      console.error('[API] Request error:', {
-        url,
-        message: apiErr.message,
-        code: apiErr.code,
-        status: apiErr.status
-      });
-      throw apiErr;
+      throw error as ApiError;
     }
     throw buildApiError('Network error occurred');
   }
@@ -568,10 +630,25 @@ export const userApi = {
     dcc?: string;
     lcb?: string;
   }): Promise<User> {
-    return authenticatedRequest<User>('/user/update', {
+    const response = await authenticatedRequest<{ message?: string; user?: User }>('/user/update', {
       method: 'POST',
       body: JSON.stringify(profileData),
     });
+    
+    // Handle different response formats
+    // API may return { message: "...", user: {...} } or directly the user object
+    if (response && typeof response === 'object') {
+      if ('user' in response && response.user) {
+        return response.user;
+      }
+      // If response is already a User object (has id, name, email, etc.)
+      if ('id' in response && 'name' in response) {
+        return response as User;
+      }
+    }
+    
+    // Fallback: return response as User (for backward compatibility)
+    return response as unknown as User;
   },
 
   /**
@@ -668,7 +745,7 @@ export const manualApi = {
         
         // Extract unique years from the response
         // Handle both number and string years (convert strings to numbers)
-        const years = [...new Set(
+        const years = Array.from(new Set(
           data
             .map((item: any) => {
               // Try different possible field names for year
@@ -688,7 +765,7 @@ export const manualApi = {
               return null;
             })
             .filter((y: any): y is number => y != null)
-        )]
+        ))
           .sort((a: number, b: number) => b - a); // Sort descending (newest first)
         
         return years;
@@ -711,17 +788,16 @@ export const manualApi = {
         const data = await authenticatedRequest<any[]>('/sunday-school/all');
         // Extract unique languages for the given year
         if (data && Array.isArray(data)) {
-          const languages = [...new Set(
+          const languages = Array.from(new Set(
             data
-              .filter((item: any) => item.year == year)
+              .filter((item: any) => item.year === year)
               .map((item: any) => item.language)
               .filter((l: any) => l != null && typeof l === 'string')
-          )];
+          ));
           return languages;
         }
         return [];
       } catch (error) {
-        console.error('[manualApi.getLanguages] Error fetching from /sunday-school/all:', error);
         throw error;
       }
     }
@@ -746,7 +822,7 @@ export const manualApi = {
           
           const manual = data.find((item: any) => {
             const itemYear = typeof item.year === 'string' ? parseInt(item.year, 10) : item.year;
-            const yearMatch = itemYear == yearNum;
+            const yearMatch = itemYear === yearNum;
             const langMatch = ((item.language || '').toLowerCase()) === langLower;
             return yearMatch && langMatch;
           });
@@ -766,7 +842,6 @@ export const manualApi = {
         }
         return [];
       } catch (error) {
-        console.error('[manualApi.getLessons] Error fetching from /sunday-school/all:', error);
         throw error;
       }
     }
@@ -791,7 +866,7 @@ export const manualApi = {
           
           const manual = data.find((item: any) => {
             const itemYear = typeof item.year === 'string' ? parseInt(item.year, 10) : item.year;
-            const yearMatch = itemYear == yearNum;
+            const yearMatch = itemYear === yearNum;
             const langMatch = (item.language || '').toLowerCase() === (language || '').toLowerCase();
             return yearMatch && langMatch;
           });
@@ -804,7 +879,7 @@ export const manualApi = {
             const topic = topics.find((t: any) => {
               const tNumber = typeof t.number === 'string' ? parseInt(t.number, 10) : t.number;
               const tId = typeof t.id === 'string' ? parseInt(t.id, 10) : t.id;
-              return tNumber == lessonIdNum || tId == lessonIdNum;
+              return tNumber === lessonIdNum || tId === lessonIdNum;
             });
             
             if (topic) {
@@ -839,13 +914,122 @@ export const manualApi = {
         }
         throw new Error(`Lesson ${lessonId} not found in ${year} ${language} manual`);
       } catch (error) {
-        console.error('[manualApi.getLessonDetail] Error fetching lesson detail:', error);
         throw error;
       }
     }
     
     // For other types, use the standard endpoint
     return authenticatedRequest<any>(`/manuals/${type}/${year}/${language}/lessons/${lessonId}`);
+  },
+};
+
+/**
+ * Get all Sunday School manuals with payment status
+ * Returns array of manuals with paid, sponsored, is_free flags
+ */
+export async function getAllSundaySchoolManuals(): Promise<any[]> {
+  return authenticatedRequest<any[]>('/sunday-school/all');
+}
+
+/**
+ * Payment API Service
+ */
+export const paymentApi = {
+  /**
+   * Get wallet balance
+   */
+  async getWalletBalance(): Promise<{ balance: number; currency: string }> {
+    return authenticatedRequest<{ balance: number; currency: string }>('/payment/wallet/balance');
+  },
+
+  /**
+   * Get existing Paystack dedicated account
+   * Note: There's no separate GET endpoint - use createAccount which returns existing account if it exists
+   */
+  async getPaystackAccount(): Promise<{
+    account_number: string;
+    account_name: string;
+    bank: string;
+    customer_code?: string;
+  }> {
+    // Use the create endpoint which returns existing account if one exists
+    return authenticatedRequest<{
+      account_number: string;
+      account_name: string;
+      bank: string;
+      customer_code?: string;
+    }>('/paystack/create-account', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Create Paystack dedicated account
+   * If account already exists, returns existing account details
+   */
+  async createPaystackAccount(): Promise<{
+    account_number: string;
+    account_name: string;
+    bank: string;
+    customer_code?: string;
+  }> {
+    return authenticatedRequest<{
+      account_number: string;
+      account_name: string;
+      bank: string;
+      customer_code?: string;
+    }>('/paystack/create-account', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Pay for manual using Paystack reference (after payment completion in popup)
+   */
+  async payWithPaystack(params: {
+    reference: string;
+    amount: number; // Amount in kobo
+    manual_id: number;
+    copy: number;
+  }): Promise<any> {
+    return authenticatedRequest<any>('/sunday-school/pay', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  /**
+   * Pay for manual using wallet transfer
+   */
+  async payWithWallet(params: {
+    manual_id: number;
+    copy: number;
+  }): Promise<any> {
+    return authenticatedRequest<any>('/sunday-school/pay-with-transfer', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  /**
+   * Get paid manuals
+   */
+  async getPaidManuals(): Promise<any[]> {
+    return authenticatedRequest<any[]>('/sunday-school/paid-manuals');
+  },
+
+  /**
+   * Get unpaid manuals
+   */
+  async getUnpaidManuals(): Promise<any[]> {
+    return authenticatedRequest<any[]>('/sunday-school/unpaid');
+  },
+
+  /**
+   * Get payment history
+   */
+  async getPaymentHistory(): Promise<any[]> {
+    return authenticatedRequest<any[]>('/payments/history');
   },
 };
 

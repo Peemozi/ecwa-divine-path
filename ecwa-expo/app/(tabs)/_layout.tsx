@@ -14,11 +14,17 @@ export default function TabLayout() {
           backgroundColor: Palette.background,
           borderTopColor: '#e4e7f2',
           borderTopWidth: 1,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
         },
+        tabBarHideOnKeyboard: false,
       }}
     >
       <Tabs.Screen
@@ -54,6 +60,37 @@ export default function TabLayout() {
         options={{
           title: 'More',
           tabBarIcon: ({ color }) => <Menu size={22} color={color} />,
+        }}
+      />
+      {/* Hidden tabs - accessible but not shown in tab bar */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="payment-history"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="help-support"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="about"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

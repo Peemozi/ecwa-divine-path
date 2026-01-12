@@ -27,7 +27,8 @@ const QuizYears = () => {
         setYears(data ?? []);
       } catch (error) {
         if (isSubscriptionError(error)) {
-          router.replace("/payment");
+          // Quiz access error - navigate back
+          router.back();
           return;
         }
         Toast.show({

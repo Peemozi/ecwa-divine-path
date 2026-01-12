@@ -41,8 +41,7 @@ const QuizHistory = () => {
       if (!raw) return;
       const parsed: QuizAttempt[] = JSON.parse(raw);
       setQuizHistory(parsed);
-    } catch (err) {
-      console.error('Error loading quiz history:', err);
+    } catch (_err) {
     }
   };
 

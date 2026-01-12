@@ -110,16 +110,27 @@ const SundaySchoolLesson: React.FC = () => {
         const hasAccess = dash?.user?.subscription?.hasAccess === true;
         await AsyncStorage.setItem("sundaySchoolPaid", hasAccess ? "true" : "false");
         if (!hasAccess) {
-          router.replace("/payment");
+          // Navigate to manuals to purchase
+          router.replace({
+            pathname: "/(tabs)/manuals/years",
+            params: { type: "sunday-school" },
+          });
+          return;
         }
       } catch (err) {
         if (isSubscriptionError(err)) {
           await AsyncStorage.setItem("sundaySchoolPaid", "false");
-          router.replace("/payment");
+          router.replace({
+            pathname: "/(tabs)/manuals/years",
+            params: { type: "sunday-school" },
+          });
           return;
         }
         await AsyncStorage.setItem("sundaySchoolPaid", "false");
-        router.replace("/payment");
+        router.replace({
+          pathname: "/(tabs)/manuals/years",
+          params: { type: "sunday-school" },
+        });
       }
     };
     checkPayment();
@@ -134,8 +145,7 @@ const SundaySchoolLesson: React.FC = () => {
     try {
       await Share.share({ message: shareContent });
       showToast("Share dialog opened");
-    } catch (err) {
-      console.error("Share error:", err);
+    } catch (_err) {
       showToast("Unable to open share dialog");
     }
   };

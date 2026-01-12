@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
 import Toast from "react-native-toast-message";
-import { hymnApi, isSubscriptionError } from "@/src/lib/api";
+import { hymnApi } from "@/src/lib/api";
 import { formatHymn } from "@/src/lib/hymn-format";
 import { useFontSize } from "@/src/lib/font-size-context";
 

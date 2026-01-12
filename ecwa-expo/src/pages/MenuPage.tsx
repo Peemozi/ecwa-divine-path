@@ -21,7 +21,7 @@ import {
   History,
 } from "lucide-react-native";
 import { Palette, Spacing, Radii, Shadow } from "@/constants/theme";
-import { authApi, removeTokens } from "@/src/lib/api";
+import { authApi, removeTokens, clearAllUserData } from "@/src/lib/api";
 import Toast from "react-native-toast-message";
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
@@ -53,7 +53,7 @@ export default function MenuPage() {
               await authApi.logout().catch(() => undefined);
             } finally {
               await removeTokens();
-              await AsyncStorage.multiRemove(["userEmail", "userName"]);
+              await clearAllUserData();
               router.replace("/auth");
             }
           },
@@ -63,7 +63,7 @@ export default function MenuPage() {
   };
 
   const menuItems = [
-    { icon: User, label: "Profile", action: () => router.push("/profile") },
+    { icon: User, label: "Profile", action: () => router.push("/(tabs)/profile") },
     { 
       icon: History, 
       label: "Quiz History", 
@@ -76,10 +76,10 @@ export default function MenuPage() {
         });
       }
     },
-    { icon: CreditCard, label: "Payment History", action: () => router.push("/payment-history") },
-    { icon: Settings, label: "Settings", action: () => router.push("/settings") },
-    { icon: HelpCircle, label: "Help & Support", action: () => router.push("/help-support") },
-    { icon: Info, label: "About", action: () => router.push("/about") },
+    { icon: CreditCard, label: "Payment History", action: () => router.push("/(tabs)/payment-history") },
+    { icon: Settings, label: "Settings", action: () => router.push("/(tabs)/settings") },
+    { icon: HelpCircle, label: "Help & Support", action: () => router.push("/(tabs)/help-support") },
+    { icon: Info, label: "About", action: () => router.push("/(tabs)/about") },
   ];
 
   return (

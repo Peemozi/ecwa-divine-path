@@ -1,14 +1,12 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from "react-native";
 import { Brain, GraduationCap } from "lucide-react-native";
-import { useRouter } from "expo-router";
 import { Palette, Spacing, Radii, Shadow } from "@/constants/theme";
 import Toast from "react-native-toast-message";
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
 
 const Quiz = () => {
-  const router = useRouter();
 
   const quizTypes = [
     {
@@ -29,7 +27,7 @@ const Quiz = () => {
     },
   ];
 
-  const goToYears = (id: string) => {
+  const goToYears = (_id: string) => {
     // Show coming soon for all quiz types
     Toast.show({
       type: "success",

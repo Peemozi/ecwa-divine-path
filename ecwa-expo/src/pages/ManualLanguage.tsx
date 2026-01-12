@@ -9,10 +9,18 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, Lock, CheckCircle } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
-import { manualApi, isSubscriptionError } from "@/src/lib/api";
+import { manualApi, isSubscriptionError, getAllSundaySchoolManuals } from "@/src/lib/api";
 import Toast from "react-native-toast-message";
+
+interface ManualLanguageItem {
+  language: string;
+  manual_id: number;
+  paid: boolean;
+  sponsored: boolean;
+  is_free: boolean;
+}
 
 export default function ManualLanguage() {
   const router = useRouter();
@@ -20,7 +28,7 @@ export default function ManualLanguage() {
   const type = Array.isArray(params.type) ? params.type[0] ?? "" : params.type ?? "";
   const year = Array.isArray(params.year) ? params.year[0] ?? "" : params.year ?? "";
   const [backPressed, setBackPressed] = useState(false);
-  const [languages, setLanguages] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<ManualLanguageItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -28,12 +36,53 @@ export default function ManualLanguage() {
       if (!type || !year) return;
       setIsLoading(true);
       try {
-        const data = await manualApi.getLanguages(type, year);
-        setLanguages(data ?? []);
+        if (type === "sunday-school") {
+          // Fetch all manuals and filter by year, extract language info with payment status
+          const data = await getAllSundaySchoolManuals();
+          const yearNum = typeof year === "string" ? parseInt(year, 10) : year;
+          
+          if (data && Array.isArray(data)) {
+            const manualsForYear = data.filter((item: any) => {
+              const itemYear = typeof item.year === "string" ? parseInt(item.year, 10) : item.year;
+              return itemYear === yearNum;
+            });
+
+            // Group by language and include payment status
+            const languageMap = new Map<string, ManualLanguageItem>();
+            manualsForYear.forEach((manual: any) => {
+              const lang = manual.language || "";
+              if (lang && !languageMap.has(lang)) {
+                languageMap.set(lang, {
+                  language: lang,
+                  manual_id: manual.id,
+                  paid: manual.paid === true,
+                  sponsored: manual.sponsored === true,
+                  is_free: manual.is_free === true,
+                });
+              }
+            });
+
+            setLanguages(Array.from(languageMap.values()));
+          } else {
+            setLanguages([]);
+          }
+        } else {
+          // For other types, use the standard endpoint
+          const data = await manualApi.getLanguages(type, year);
+          // Convert to ManualLanguageItem format (assume not paid for non-Sunday School)
+          const languageItems: ManualLanguageItem[] = (data ?? []).map((lang) => ({
+            language: lang,
+            manual_id: 0, // Not available for non-Sunday School
+            paid: false,
+            sponsored: false,
+            is_free: false,
+          }));
+          setLanguages(languageItems);
+        }
       } catch (error) {
         if (isSubscriptionError(error)) {
-          router.replace("/payment");
-          return;
+          // Don't redirect for subscription errors in this context
+          // Just show empty or error state
         }
         Toast.show({
           type: "error",
@@ -47,6 +96,33 @@ export default function ManualLanguage() {
   }, [router, type, year]);
 
   const title = type === "sunday-school" ? "Sunday School Manual" : "Bible Study Manual";
+
+  const handleLanguagePress = (item: ManualLanguageItem) => {
+    // Check if user has access (paid, sponsored, or free)
+    const hasAccess = item.paid || item.sponsored || item.is_free;
+    
+    if (hasAccess) {
+      // User has access, navigate to lessons
+      router.push({
+        pathname: "/(tabs)/manuals/lessons",
+        params: {
+          type,
+          year,
+          language: item.language,
+        },
+      });
+    } else {
+      // User needs to purchase, navigate to purchase screen
+      router.push({
+        pathname: "/purchase-manual" as any,
+        params: {
+          manual_id: String(item.manual_id),
+          year: year,
+          language: item.language,
+        },
+      });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -83,34 +159,47 @@ export default function ManualLanguage() {
       ) : (
         <FlatList
           data={languages}
-          keyExtractor={(item) => item}
+          keyExtractor={(item) => `${item.language}-${item.manual_id}`}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/manuals/lessons",
-                  params: {
-                    type,
-                    year,
-                    language: item,
-                  },
-                })
-              }
-            >
-              <View style={styles.flagContainer}>
-                <Text style={styles.flag}>🌐</Text>
-              </View>
+          renderItem={({ item }) => {
+            const hasAccess = item.paid || item.sponsored || item.is_free;
+            return (
+              <TouchableOpacity
+                style={styles.card}
+                onPress={() => handleLanguagePress(item)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.flagContainer}>
+                  <Text style={styles.flag}>🌐</Text>
+                </View>
 
-              <View style={styles.cardText}>
-                <Text style={styles.name}>{item}</Text>
-                <Text style={styles.subtitle}>
-                  {title} in {item}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
+                <View style={styles.cardText}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.name}>{item.language}</Text>
+                    {hasAccess ? (
+                      // Only show badge for Free or Sponsored, not for purchased (Owned)
+                      item.is_free || item.sponsored ? (
+                        <View style={styles.accessBadge}>
+                          <CheckCircle size={16} color={Palette.accent} />
+                          <Text style={styles.accessBadgeText}>
+                            {item.is_free ? "Free" : "Sponsored"}
+                          </Text>
+                        </View>
+                      ) : null
+                    ) : (
+                      <View style={styles.lockBadge}>
+                        <Lock size={16} color={Palette.textMuted} />
+                        <Text style={styles.lockBadgeText}>Purchase</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.subtitle}>
+                    {title} in {item.language}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
           ListEmptyComponent={
             !isLoading ? (
               <Text style={styles.emptyText}>No languages found.</Text>
@@ -166,9 +255,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   flag: { fontSize: 22 },
-  cardText: { marginLeft: 14 },
-  name: { fontSize: 16, fontWeight: "600", color: Palette.textDefault },
+  cardText: { marginLeft: 14, flex: 1 },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  name: { fontSize: 16, fontWeight: "600", color: Palette.textDefault, flex: 1 },
   subtitle: { fontSize: 13, color: Palette.textMuted },
+  accessBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#e6f7e6",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  accessBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: Palette.accent,
+  },
+  lockBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#fff4e6",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  lockBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#d97706",
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",

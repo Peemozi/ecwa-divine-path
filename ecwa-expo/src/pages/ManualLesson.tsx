@@ -10,7 +10,7 @@ import {
 import { ArrowLeft, Bookmark, Share2 } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
-import { manualApi, isSubscriptionError } from "@/src/lib/api";
+import { manualApi, isSubscriptionError, getAllSundaySchoolManuals } from "@/src/lib/api";
 import Toast from "react-native-toast-message";
 import { HTMLRenderer } from "@/src/lib/html-renderer";
 import { useFontSize } from "@/src/lib/font-size-context";
@@ -37,16 +37,53 @@ const ManualLesson = () => {
   useEffect(() => {
     const loadLesson = async () => {
       setIsLoading(true);
+      
+      // For Sunday School, check payment status first
+      if (type === "sunday-school") {
+        try {
+          const allManuals = await getAllSundaySchoolManuals();
+          const yearNum = typeof year === "string" ? parseInt(year, 10) : year;
+          const langLower = (language || "").toLowerCase();
+          
+          const manual = allManuals.find((item: any) => {
+            const itemYear = typeof item.year === "string" ? parseInt(item.year, 10) : item.year;
+            const itemLang = (item.language || "").toLowerCase();
+            return itemYear === yearNum && itemLang === langLower;
+          });
+          
+          if (manual) {
+            const access = manual.paid === true || manual.sponsored === true || manual.is_free === true;
+            
+            // If no access, redirect to purchase screen
+            if (!access) {
+              setIsLoading(false);
+              router.replace({
+                pathname: "/purchase-manual" as any,
+                params: {
+                  manual_id: String(manual.id),
+                  year: String(year),
+                  language: language,
+                },
+              });
+              return;
+            }
+          }
+        } catch (_error) {
+          // Payment check failed, continue loading lesson (may show error later)
+        }
+      }
+      
+      // Load lesson detail
       try {
         const data = await manualApi.getLessonDetail(type, year, language, lessonId);
         setLesson(data);
       } catch (error) {
         if (isSubscriptionError(error)) {
-          router.replace("/payment");
+          // Payment/subscription error - navigate back to lessons list
+          // Payment check should have happened before reaching this screen
+          router.back();
           return;
         }
-        const errorMessage = (error as Error).message || "Failed to load lesson";
-        console.error('[ManualLesson] Error loading lesson:', errorMessage, { type, year, language, lessonId });
         Toast.show({
           type: "error",
           text1: "Lesson Not Found",
@@ -58,6 +95,7 @@ const ManualLesson = () => {
         setIsLoading(false);
       }
     };
+    
     loadLesson();
   }, [language, lessonId, router, type, year]);
 

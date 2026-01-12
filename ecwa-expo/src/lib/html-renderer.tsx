@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Text, View, StyleSheet } from 'react-native';
+import { Text, View } from 'react-native';
 import { Palette, Spacing } from '@/constants/theme';
 
 interface HTMLRendererProps {
@@ -64,7 +64,6 @@ export const parseHTML = (html: string): React.ReactNode[] => {
   if (!html) return [];
   
   const parts: React.ReactNode[] = [];
-  let currentIndex = 0;
   
   // Simple regex to find HTML tags
   const tagRegex = /<(\/?)([a-z][a-z0-9]*)[^>]*>/gi;

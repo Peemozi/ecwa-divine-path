@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Toast from "react-native-toast-message";
 import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -27,7 +26,7 @@ export default function Auth() {
       <Animated.View entering={ZoomIn} style={styles.card}>
         <View style={styles.header}>
           <Text style={styles.title}>Welcome</Text>
-          <Text style={styles.subtitle}>Choose how you'd like to continue</Text>
+          <Text style={styles.subtitle}>Choose how you&apos;d like to continue</Text>
         </View>
 
         <View style={styles.form}>

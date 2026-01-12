@@ -12,7 +12,7 @@ import { useRouter } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
 import { Book } from "lucide-react-native";
 import Toast from "react-native-toast-message";
-import { hymnApi, isSubscriptionError } from "@/src/lib/api";
+import { hymnApi } from "@/src/lib/api";
 
 const filters = [
   { key: "all", label: "All" },

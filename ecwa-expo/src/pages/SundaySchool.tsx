@@ -54,8 +54,7 @@ const SundaySchool: React.FC = () => {
       if (isSubscriptionError(error)) {
         setHasPaidAccess(false);
         await AsyncStorage.setItem("sundaySchoolPaid", "false");
-        router.replace("/payment");
-        return;
+        // Allow browsing, payment check happens at manual selection
       }
       setHasPaidAccess(false);
       await AsyncStorage.setItem("sundaySchoolPaid", "false");
@@ -119,8 +118,8 @@ const SundaySchool: React.FC = () => {
               Get full access to all Sunday School lessons and study materials.
             </Text>
 
-            <Pressable style={styles.buyBtn} onPress={() => router.push("/payment")}>
-              <Text style={styles.buyBtnText}>Buy Full Access - ₦5,000</Text>
+            <Pressable style={styles.buyBtn} onPress={() => router.push("/(tabs)/manuals")}>
+              <Text style={styles.buyBtnText}>Browse Manuals</Text>
             </Pressable>
           </View>
         ) : (

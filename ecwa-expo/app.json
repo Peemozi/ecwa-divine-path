@@ -55,6 +55,7 @@
     },
     "env": {
       "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8000/api",
+      "EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY": "pk_test_47df0e5a57e3e82902a4d75629068aececcb9917",
       "_comment": "For mobile devices, the app will automatically replace 'localhost' with your computer's IP address. To manually set your IP, add: EXPO_PUBLIC_API_IP=192.168.1.x (replace with your actual IP)"
     },
     "_comment": "API temporarily disabled - see src/lib/api.ts USE_API flag to re-enable. For mobile: The app auto-detects your LAN IP from Expo. If it doesn't work, set EXPO_PUBLIC_API_IP environment variable with your computer's IP address (e.g., 192.168.1.100)"

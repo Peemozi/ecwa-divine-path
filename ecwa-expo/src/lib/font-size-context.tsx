@@ -26,7 +26,7 @@ export function FontSizeProvider({ children }: { children: ReactNode }) {
             setFontSizeState(size);
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Keep default font size on error
       }
     };
@@ -39,7 +39,7 @@ export function FontSizeProvider({ children }: { children: ReactNode }) {
     setFontSizeState(clampedSize);
     try {
       await AsyncStorage.setItem(FONT_SIZE_STORAGE_KEY, clampedSize.toString());
-    } catch (error) {
+    } catch (_error) {
       // Ignore storage errors
     }
   }, []);

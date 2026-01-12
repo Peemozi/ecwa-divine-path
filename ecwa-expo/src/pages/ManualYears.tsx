@@ -37,8 +37,8 @@ export default function ManualYears() {
         }
       } catch (error) {
         if (isSubscriptionError(error)) {
-          router.replace("/payment");
-          return;
+          // Payment/subscription error - allow user to browse manuals
+          // Payment check will happen at language/manual level
         }
         Toast.show({
           type: "error",

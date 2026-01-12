@@ -33,18 +33,36 @@ export default function LoginEmailOnly() {
       Toast.show({ type: "success", text1: "Login code sent! Check your email." });
       router.push({ pathname: "/verify-token", params: { email } });
     } catch (error) {
-      console.error('[LoginEmailOnly] Error sending login code:', error);
-      let message = error instanceof Error ? error.message : "Failed to send code";
+      // Extract error message - backend errors are already formatted
+      let errorMessage = "Failed to send verification code";
+      let errorTitle = "Request Failed";
       
-      // Provide more helpful error message for network errors
-      if (message.includes('Network request failed') || message.includes('fetch')) {
-        message = "Cannot connect to server. Please check:\n• API server is running\n• Your device is on the same network\n• Check console for API URL";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Format common error messages for better UX
+        if (errorMessage.toLowerCase().includes('not found') || 
+            errorMessage.toLowerCase().includes('does not exist')) {
+          errorTitle = "Email Not Found";
+          errorMessage = "No account found with this email address. Please check your email or create an account.";
+        } else if (errorMessage.toLowerCase().includes('invalid') && 
+                   errorMessage.toLowerCase().includes('email')) {
+          errorTitle = "Invalid Email";
+          errorMessage = "Please enter a valid email address.";
+        } else if (errorMessage.includes('Network request failed') || errorMessage.includes('fetch')) {
+          errorTitle = "Connection Error";
+          errorMessage = "Cannot connect to server. Please check your internet connection and try again.";
+        } else if (errorMessage.toLowerCase().includes('too many') || 
+                   errorMessage.toLowerCase().includes('rate limit')) {
+          errorTitle = "Too Many Requests";
+          errorMessage = "Please wait a few minutes before requesting another code.";
+        }
       }
       
       Toast.show({ 
         type: "error", 
-        text1: "Login Failed",
-        text2: message,
+        text1: errorTitle,
+        text2: errorMessage,
         visibilityTime: 5000
       });
     } finally {

@@ -45,8 +45,39 @@ export default function CreateAccount() {
       router.replace("/account-created");
     } catch (error) {
       setIsLoading(false);
-      const message = error instanceof Error ? error.message : "Failed to create account";
-      Toast.show({ type: "error", text1: message });
+      
+      // Extract error message - backend errors are already formatted
+      let errorMessage = "Account creation failed";
+      let errorTitle = "Registration Failed";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Format common error messages for better UX
+        if (errorMessage.toLowerCase().includes('email') && 
+            (errorMessage.toLowerCase().includes('already') || errorMessage.toLowerCase().includes('taken'))) {
+          errorTitle = "Email Already Exists";
+          errorMessage = "An account with this email already exists. Please login instead or use a different email.";
+        } else if (errorMessage.toLowerCase().includes('validation') || 
+                   errorMessage.toLowerCase().includes('required')) {
+          errorTitle = "Validation Error";
+          errorMessage = "Please fill all required fields correctly.";
+        } else if (errorMessage.toLowerCase().includes('password') && 
+                   (errorMessage.toLowerCase().includes('weak') || errorMessage.toLowerCase().includes('short'))) {
+          errorTitle = "Weak Password";
+          errorMessage = "Password is too weak. Please choose a stronger password (at least 8 characters).";
+        } else if (errorMessage.includes('Network request failed') || errorMessage.includes('fetch')) {
+          errorTitle = "Connection Error";
+          errorMessage = "Cannot connect to server. Please check your internet connection and try again.";
+        }
+      }
+      
+      Toast.show({ 
+        type: "error", 
+        text1: errorTitle,
+        text2: errorMessage,
+        visibilityTime: 5000
+      });
     }
   };
 

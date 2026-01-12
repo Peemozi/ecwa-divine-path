@@ -22,8 +22,7 @@ export default function SundaySchoolYears() {
         setYears(data ?? []);
       } catch (error) {
         if (isSubscriptionError(error)) {
-          router.replace("/payment");
-          return;
+          // Allow browsing, payment check happens at manual selection
         }
         Toast.show({
           type: "error",

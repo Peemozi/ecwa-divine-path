@@ -19,7 +19,7 @@ import {
   User,
 } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
-import { userApi, isSubscriptionError } from "@/src/lib/api";
+import { userApi, isSubscriptionError, getAllSundaySchoolManuals } from "@/src/lib/api";
 import Toast from "react-native-toast-message";
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
@@ -51,7 +51,8 @@ const quickLinks = [
     icon: BookOpen,
     bg: "#FFF7E0",
     iconBg: "#FFE9B3",
-    route: "/sunday-school" as const,
+    route: "/(tabs)/manuals" as const,
+    manualType: "sunday-school" as const,
   },
   {
     title: "Hymn Book",
@@ -63,6 +64,10 @@ const quickLinks = [
   },
 ];
 
+const LAST_LESSON_STORAGE_KEY = 'dashboard_last_lesson';
+const LAST_HYMN_STORAGE_KEY = 'dashboard_last_hymn';
+const LAST_NEXT_LESSON_STORAGE_KEY = 'dashboard_last_next_lesson';
+
 export default function Dashboard() {
   const router = useRouter();
   const [displayName, setDisplayName] = useState("Guest");
@@ -71,20 +76,47 @@ export default function Dashboard() {
   const [hymnOfWeek, setHymnOfWeek] = useState<any | null>(null);
   const [nextLesson, setNextLesson] = useState<any | null>(null);
   const [subscription, setSubscription] = useState<{ hasAccess?: boolean } | null>(null);
-  const [participation, setParticipation] = useState<{
-    read_topics?: number;
-    percentage?: number;
-    current_week?: number | string;
-  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Load last displayed lesson from storage on mount
   useEffect(() => {
-    const loadName = async () => {
-      const storedName = await AsyncStorage.getItem("userName");
-      const storedEmail = await AsyncStorage.getItem("userEmail");
-      setDisplayName(storedName || storedEmail || "Guest");
+    const loadStoredData = async () => {
+      try {
+        const storedName = await AsyncStorage.getItem("userName");
+        const storedEmail = await AsyncStorage.getItem("userEmail");
+        setDisplayName(storedName || storedEmail || "Guest");
+
+        // Load last displayed lesson, hymn, and next lesson from storage
+        const storedLesson = await AsyncStorage.getItem(LAST_LESSON_STORAGE_KEY);
+        const storedHymn = await AsyncStorage.getItem(LAST_HYMN_STORAGE_KEY);
+        const storedNextLesson = await AsyncStorage.getItem(LAST_NEXT_LESSON_STORAGE_KEY);
+
+        if (storedLesson) {
+          try {
+            setCurrentLesson(JSON.parse(storedLesson));
+          } catch (_e) {
+            // Invalid JSON, ignore
+          }
+        }
+        if (storedHymn) {
+          try {
+            setHymnOfWeek(JSON.parse(storedHymn));
+          } catch (_e) {
+            // Invalid JSON, ignore
+          }
+        }
+        if (storedNextLesson) {
+          try {
+            setNextLesson(JSON.parse(storedNextLesson));
+          } catch (_e) {
+            // Invalid JSON, ignore
+          }
+        }
+      } catch (_error) {
+        // Ignore storage errors
+      }
     };
-    loadName();
+    loadStoredData();
   }, []);
 
   useEffect(() => {
@@ -114,7 +146,18 @@ export default function Dashboard() {
         }
         setCurrentLesson(currentLessonData);
         
-        setHymnOfWeek(dash.hymnOfWeek ?? null);
+        // Store current lesson for next time (so it shows while loading)
+        if (currentLessonData) {
+          await AsyncStorage.setItem(LAST_LESSON_STORAGE_KEY, JSON.stringify(currentLessonData));
+        }
+        
+        const hymnData = dash.hymnOfWeek ?? null;
+        setHymnOfWeek(hymnData);
+        
+        // Store hymn for next time
+        if (hymnData) {
+          await AsyncStorage.setItem(LAST_HYMN_STORAGE_KEY, JSON.stringify(hymnData));
+        }
         
         const nextLessonData = dash.nextLesson ?? null;
         if (nextLessonData) {
@@ -129,6 +172,12 @@ export default function Dashboard() {
           nextLessonData.year = nextLessonData.year || 2025;
         }
         setNextLesson(nextLessonData);
+        
+        // Store next lesson for next time
+        if (nextLessonData) {
+          await AsyncStorage.setItem(LAST_NEXT_LESSON_STORAGE_KEY, JSON.stringify(nextLessonData));
+        }
+        
         setSubscription(dash.user?.subscription ?? null);
 
         // Refresh stored display name/email if available
@@ -148,8 +197,8 @@ export default function Dashboard() {
         }
       } catch (error) {
         if (isSubscriptionError(error)) {
-          router.replace("/payment");
-          return;
+          // Subscription error - allow user to browse, payment check happens at manual level
+          // Continue with fallback data
         }
         // Show user-friendly error message for server errors
         const apiError = error as any;
@@ -201,7 +250,7 @@ export default function Dashboard() {
         </View>
         <TouchableOpacity
           accessibilityRole="button"
-          onPress={() => router.push("/profile")}
+          onPress={() => router.push("/(tabs)/profile")}
           onPressIn={() => setProfilePressed(true)}
           onPressOut={() => setProfilePressed(false)}
           style={[
@@ -232,38 +281,110 @@ export default function Dashboard() {
         <TouchableOpacity
           style={styles.lessonCard}
           onPress={async () => {
-            const paid = await AsyncStorage.getItem("sundaySchoolPaid");
-            const hasPaid = paid === "true" || subscription?.hasAccess === true;
-            
-            // Prepare navigation params for the lesson
-            // Use 'number' (week number) instead of 'id' since the API matches by number
-            const year = currentLesson?.year || 2025;
-            const language = "english"; // Default to english, or get from backend if available
-            // Prioritize number over id, since the API searches by topic.number
-            // The dashboard returns 'number' or 'weekNumber' which matches the topic's 'number' field
-            const lessonId = currentLesson?.number || currentLesson?.weekNumber || lessonNumber;
-            
-            // Store the intended destination before navigating
-            const navigationParams = {
-              pathname: "/(tabs)/manuals/lesson" as const,
-              params: {
-                type: "sunday-school",
-                year: String(year),
-                language: language,
-                lessonId: String(lessonId),
-              },
-            };
-            
-            if (hasPaid && currentLesson) {
-              // User has paid, navigate directly to lesson
-              router.push(navigationParams);
-            } else {
-              // User needs to pay, store destination and go to payment
-              await AsyncStorage.setItem(
-                "pendingNavigation",
-                JSON.stringify(navigationParams)
-              );
-              router.push("/payment");
+            try {
+              // Prepare navigation params for the lesson
+              // Use 'number' (week number) instead of 'id' since the API matches by number
+              const year = currentLesson?.year || 2025;
+              const language = "english"; // Default to english, or get from backend if available
+              // Prioritize number over id, since the API searches by topic.number
+              // The dashboard returns 'number' or 'weekNumber' which matches the topic's 'number' field
+              const lessonId = currentLesson?.number || currentLesson?.weekNumber || lessonNumber;
+              
+              // Check if user has paid for THIS specific manual
+              const allManuals = await getAllSundaySchoolManuals();
+              
+              // Find the specific manual for the current lesson's year and language
+              const targetManual = allManuals.find((manual: any) => {
+                const manualYear = typeof manual.year === "string" ? parseInt(manual.year, 10) : manual.year;
+                const manualLang = (manual.language || "").toLowerCase();
+                return manualYear === year && manualLang === language.toLowerCase();
+              });
+              
+              if (targetManual) {
+                // Check if user has access to THIS specific manual
+                const hasAccess = 
+                  targetManual.paid === true || 
+                  targetManual.sponsored === true || 
+                  targetManual.is_free === true;
+                
+                if (hasAccess && currentLesson) {
+                  // User has paid for this specific manual, navigate to lesson with proper navigation stack
+                  // Build navigation stack: manuals → years → language → lessons → lesson
+                  // This ensures back button follows: lesson → lessons → language → years → manuals (not dashboard)
+                  
+                  // Step 1: Replace dashboard with manuals (removes dashboard from history)
+                  router.replace({
+                    pathname: "/(tabs)/manuals" as any,
+                  });
+                  
+                  // Step 2-5: Build the stack with proper delays
+                  setTimeout(() => {
+                    // Navigate to years
+                    router.push({
+                      pathname: "/(tabs)/manuals/years" as any,
+                      params: { type: "sunday-school" },
+                    });
+                    
+                    setTimeout(() => {
+                      // Navigate to language
+                      router.push({
+                        pathname: "/(tabs)/manuals/language" as any,
+                        params: { 
+                          type: "sunday-school",
+                          year: String(year),
+                        },
+                      });
+                      
+                      setTimeout(() => {
+                        // Navigate to lessons list
+                        router.push({
+                          pathname: "/(tabs)/manuals/lessons" as any,
+                          params: {
+                            type: "sunday-school",
+                            year: String(year),
+                            language: language,
+                          },
+                        });
+                        
+                        setTimeout(() => {
+                          // Finally navigate to the specific lesson (back button will go to lessons list)
+                          router.push({
+                            pathname: "/(tabs)/manuals/lesson" as any,
+                            params: {
+                              type: "sunday-school",
+                              year: String(year),
+                              language: language,
+                              lessonId: String(lessonId),
+                            },
+                          });
+                        }, 100);
+                      }, 100);
+                    }, 100);
+                  }, 100);
+                } else {
+                  // User hasn't paid for this specific manual, navigate to purchase page
+                  router.push({
+                    pathname: "/purchase-manual" as any,
+                    params: {
+                      manual_id: String(targetManual.id),
+                      year: String(year),
+                      language: language,
+                    },
+                  });
+                }
+              } else {
+                // Manual not found, navigate to manuals page to browse
+                router.push({
+                  pathname: "/(tabs)/manuals/years" as any,
+                  params: { type: "sunday-school" },
+                });
+              }
+            } catch (_error) {
+              // On error, navigate to manuals page
+              router.push({
+                pathname: "/(tabs)/manuals/years" as any,
+                params: { type: "sunday-school" },
+              });
             }
           }}
           activeOpacity={0.8}
@@ -312,13 +433,101 @@ export default function Dashboard() {
           <ChevronRight size={20} color="#194185" />
         </TouchableOpacity>
 
-        {/* Quick Links (unchanged) */}
+        {/* Quick Links */}
         <View style={styles.quickLinkRow}>
           {quickLinks.map((link) => (
             <TouchableOpacity
               key={link.title}
               style={[styles.quickLinkCard, { backgroundColor: link.bg }]}
-              onPress={() => router.push(link.route)}
+              onPress={async () => {
+                // For Sunday School, check if user has paid for the specific manual they're trying to view
+                if (link.manualType === "sunday-school") {
+                  try {
+                    // Get the specific manual based on current lesson (year) from dashboard
+                    const targetYear = currentLesson?.year || 2025;
+                    const targetLanguage = "english"; // Default language
+                    
+                    const allManuals = await getAllSundaySchoolManuals();
+                    
+                    // Find the specific manual for the current lesson's year and language
+                    const targetManual = allManuals.find((manual: any) => {
+                      const manualYear = typeof manual.year === "string" ? parseInt(manual.year, 10) : manual.year;
+                      const manualLang = (manual.language || "").toLowerCase();
+                      return manualYear === targetYear && manualLang === targetLanguage.toLowerCase();
+                    });
+                    
+                    if (targetManual) {
+                      // Check if user has access to THIS specific manual
+                      const hasAccess = 
+                        targetManual.paid === true || 
+                        targetManual.sponsored === true || 
+                        targetManual.is_free === true;
+                      
+                      if (hasAccess) {
+                        // User has paid for this manual, navigate through the flow to build proper navigation stack
+                        // This ensures back button follows: lessons → language → years → manuals (not dashboard)
+                        // We'll build the navigation stack programmatically
+                        // Step 1: Replace dashboard with manuals (removes dashboard from history)
+                        router.replace({
+                          pathname: "/(tabs)/manuals" as any,
+                        });
+                        
+                        // Step 2-4: Build the stack with proper delays to ensure each navigation completes
+                        setTimeout(() => {
+                          // Navigate to years
+                          router.push({
+                            pathname: "/(tabs)/manuals/years" as any,
+                            params: { type: "sunday-school" },
+                          });
+                          
+                          setTimeout(() => {
+                            // Navigate to language
+                            router.push({
+                              pathname: "/(tabs)/manuals/language" as any,
+                              params: { 
+                                type: "sunday-school",
+                                year: String(targetYear),
+                              },
+                            });
+                            
+                            setTimeout(() => {
+                              // Finally navigate to lessons (back button will go to language)
+                              router.push({
+                                pathname: "/(tabs)/manuals/lessons" as any,
+                                params: {
+                                  type: "sunday-school",
+                                  year: String(targetYear),
+                                  language: targetLanguage,
+                                },
+                              });
+                            }, 100);
+                          }, 100);
+                        }, 100);
+                      } else {
+                        // User hasn't paid for this specific manual, navigate to purchase page
+                        router.push({
+                          pathname: "/purchase-manual" as any,
+                          params: {
+                            manual_id: String(targetManual.id),
+                            year: String(targetYear),
+                            language: targetLanguage,
+                          },
+                        });
+                      }
+                    } else {
+                      // Manual not found, navigate to manuals page to browse
+                      router.push(link.route);
+                    }
+                  } catch (_error) {
+                    // Error handled - user will be navigated to manuals page
+                    // On error, navigate to manuals page to let user browse
+                    router.push(link.route);
+                  }
+                } else {
+                  // For other links (Hymn Book, etc.), navigate normally
+                  router.push(link.route);
+                }
+              }}
               activeOpacity={0.8}
             >
               <View
@@ -361,12 +570,11 @@ export default function Dashboard() {
               // User has paid, navigate directly to lesson
               router.push(navigationParams);
             } else {
-              // User needs to pay, store destination and go to payment
-              await AsyncStorage.setItem(
-                "pendingNavigation",
-                JSON.stringify(navigationParams)
-              );
-              router.push("/payment");
+              // User needs to pay, navigate to manuals to select manual first
+              router.push({
+                pathname: "/(tabs)/manuals/years",
+                params: { type: "sunday-school" },
+              });
             }
           }}
           activeOpacity={0.8}

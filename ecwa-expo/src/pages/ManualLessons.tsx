@@ -14,7 +14,7 @@ import { ArrowLeft, Search } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
 import Toast from "react-native-toast-message";
-import { manualApi, isSubscriptionError } from "@/src/lib/api";
+import { manualApi, isSubscriptionError, getAllSundaySchoolManuals } from "@/src/lib/api";
 
 export default function ManualLessons() {
   const router = useRouter();
@@ -32,16 +32,67 @@ export default function ManualLessons() {
   const [backPressed, setBackPressed] = useState(false);
   const [lessons, setLessons] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [manualId, setManualId] = useState<number | null>(null);
 
   useEffect(() => {
     const loadLessons = async () => {
       setIsLoading(true);
       try {
+        // For Sunday School, check payment status first
+        if (type === "sunday-school") {
+          try {
+            const allManuals = await getAllSundaySchoolManuals();
+            const yearNum = typeof year === "string" ? parseInt(year, 10) : year;
+            const langLower = (language || "").toLowerCase();
+            
+            const manual = allManuals.find((item: any) => {
+              const itemYear = typeof item.year === "string" ? parseInt(item.year, 10) : item.year;
+              const itemLang = (item.language || "").toLowerCase();
+              return itemYear === yearNum && itemLang === langLower;
+            });
+            
+            if (manual) {
+              setManualId(manual.id);
+              const access = manual.paid === true || manual.sponsored === true || manual.is_free === true;
+              
+              // If no access, redirect to purchase screen
+              if (!access) {
+                router.replace({
+                  pathname: "/purchase-manual" as any,
+                  params: {
+                    manual_id: String(manual.id),
+                    year: String(year),
+                    language: language,
+                  },
+                });
+                return;
+              }
+            }
+          } catch (_error) {
+            // Payment check failed, continue loading lessons (may show error later)
+          }
+        }
+        
+        // Load lessons
         const data = await manualApi.getLessons(type, year, language);
         setLessons(data ?? []);
       } catch (error) {
         if (isSubscriptionError(error)) {
-          router.replace("/payment");
+          // If it's a subscription error and we haven't checked payment status yet,
+          // try to navigate to purchase screen with available info
+          if (type === "sunday-school" && manualId) {
+            router.replace({
+              pathname: "/purchase-manual" as any,
+              params: {
+                manual_id: String(manualId),
+                year: String(year),
+                language: language,
+              },
+            });
+            return;
+          }
+          // For other errors, navigate back to manual years
+          router.back();
           return;
         }
         Toast.show({
@@ -53,6 +104,7 @@ export default function ManualLessons() {
       }
     };
     loadLessons();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language, router, type, year]);
 
   const filteredLessons = lessons.filter(

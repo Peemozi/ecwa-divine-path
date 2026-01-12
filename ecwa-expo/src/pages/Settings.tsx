@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,16 +6,47 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  ActivityIndicator,
 } from "react-native";
-import { ArrowLeft, Bell, Shield, Globe, FileText } from "lucide-react-native";
+import { ArrowLeft, Bell, Shield, Globe, FileText, Phone } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { Palette, Spacing, Radii, Shadow } from "@/constants/theme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { authApi } from "@/src/lib/api";
 
 const ecwaLogo = require("../assets/ecwa-logo.png");
 
 const Settings = () => {
   const router = useRouter();
   const [backPressed, setBackPressed] = useState(false);
+  const [userPhone, setUserPhone] = useState<string | null>(null);
+  const [isLoadingPhone, setIsLoadingPhone] = useState(true);
+
+  useEffect(() => {
+    const loadPhoneNumber = async () => {
+      try {
+        const phone = await AsyncStorage.getItem("userPhone");
+        if (phone) {
+          setUserPhone(phone);
+        }
+        // Also try to fetch from API
+        try {
+          const user = await authApi.getAuthUser();
+          if (user?.appUser?.mobile) {
+            setUserPhone(user.appUser.mobile);
+            await AsyncStorage.setItem("userPhone", user.appUser.mobile);
+          }
+        } catch (_error) {
+          // API fetch failed, use stored value
+        }
+      } catch (_error) {
+        // Ignore errors
+      } finally {
+        setIsLoadingPhone(false);
+      }
+    };
+    loadPhoneNumber();
+  }, []);
 
   const settingsSections = [
     {
@@ -40,6 +71,17 @@ const Settings = () => {
       items: [
         { label: "Language", description: "English" },
         { label: "App Version", description: "1.0.0" },
+      ],
+    },
+    {
+      title: "Contact",
+      icon: Phone,
+      items: [
+        { 
+          label: "Phone Number", 
+          description: isLoadingPhone ? "Loading..." : (userPhone || "Not set"),
+          isPhone: true,
+        },
       ],
     },
     {
@@ -87,12 +129,26 @@ const Settings = () => {
                   style={styles.settingItem}
                   onPress={() => {
                     // Handle setting item press
+                    if ((item as any).isPhone) {
+                      // Navigate to Profile page to edit phone number
+                      router.push("/(tabs)/profile");
+                    }
                   }}
                   activeOpacity={0.7}
+                  disabled={(item as any).isPhone && isLoadingPhone}
                 >
                   <View style={styles.settingContent}>
-                    <Text style={styles.settingLabel}>{item.label}</Text>
-                    <Text style={styles.settingDescription}>{item.description}</Text>
+                    <View style={styles.settingLabelRow}>
+                      {(item as any).isPhone && (
+                        <Phone size={16} color={Palette.textMuted} style={styles.phoneIcon} />
+                      )}
+                      <Text style={styles.settingLabel}>{item.label}</Text>
+                    </View>
+                    {isLoadingPhone && (item as any).isPhone ? (
+                      <ActivityIndicator size="small" color={Palette.accent} style={styles.phoneLoading} />
+                    ) : (
+                      <Text style={styles.settingDescription}>{item.description}</Text>
+                    )}
                   </View>
                 </TouchableOpacity>
                 {itemIndex < section.items.length - 1 && (
@@ -173,11 +229,22 @@ const styles = StyleSheet.create({
   settingContent: {
     flex: 1,
   },
+  settingLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
+  },
+  phoneIcon: {
+    marginRight: 2,
+  },
+  phoneLoading: {
+    marginTop: Spacing.xs,
+  },
   settingLabel: {
     fontSize: 16,
     fontWeight: "500",
     color: Palette.textDefault,
-    marginBottom: Spacing.xs,
   },
   settingDescription: {
     fontSize: 14,

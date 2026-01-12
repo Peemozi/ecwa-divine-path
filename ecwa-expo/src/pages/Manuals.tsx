@@ -1,19 +1,16 @@
 // src/assets/pages/Manuals.tsx
 
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { BookOpen, GraduationCap, ArrowLeft } from "lucide-react-native";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
-import { userApi, isSubscriptionError } from "@/src/lib/api";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 
 const manuals = [
@@ -37,7 +34,6 @@ const manuals = [
 
 export default function Manuals() {
   const router = useRouter();
-  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
 
   const handleManualPress = async (manualId: string) => {
     // For Bible Study, show coming soon message
@@ -51,49 +47,8 @@ export default function Manuals() {
       return;
     }
     
-    // For Sunday School, check payment before navigating
-    if (manualId === "sunday-school") {
-      setIsCheckingPayment(true);
-      try {
-        const dash: any = await userApi.getDashboard();
-        const hasAccess = dash?.user?.subscription?.hasAccess === true;
-        await AsyncStorage.setItem("sundaySchoolPaid", hasAccess ? "true" : "false");
-        
-        if (!hasAccess) {
-          setIsCheckingPayment(false);
-          router.push("/payment");
-          return;
-        }
-      } catch (error) {
-        console.error("[Manuals] Payment check error:", error);
-        setIsCheckingPayment(false);
-        if (isSubscriptionError(error)) {
-          await AsyncStorage.setItem("sundaySchoolPaid", "false");
-          router.push("/payment");
-          return;
-        }
-        // For server errors (500), check stored value as fallback
-        const apiError = error as any;
-        if (apiError?.status === 500) {
-          // Server error - using stored value as fallback
-        }
-        // For network or server errors, check stored value as fallback
-        try {
-          const stored = await AsyncStorage.getItem("sundaySchoolPaid");
-          if (stored !== "true") {
-            router.push("/payment");
-            return;
-          }
-          // If stored value says paid, allow navigation
-        } catch (storageError) {
-          // If we can't check storage, allow navigation
-        }
-      } finally {
-        setIsCheckingPayment(false);
-      }
-    }
-    
-    // Navigate to manual years (within tabs structure)
+    // For Sunday School, navigate directly to years
+    // Payment check will happen at the language/manual selection level
     router.push({
       pathname: "/(tabs)/manuals/years",
       params: { type: manualId },
@@ -119,6 +74,7 @@ export default function Manuals() {
               key={manual.id}
               style={[styles.card, { backgroundColor: manual.card }]}
               onPress={() => handleManualPress(manual.id)}
+              disabled={false}
             >
               <View
                 style={[styles.iconWrap, { backgroundColor: manual.iconBg }]}

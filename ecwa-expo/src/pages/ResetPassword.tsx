@@ -82,8 +82,41 @@ export default function ResetPassword() {
       await authApi.resetPassword(email, otpValue, password);
       setModalVisible(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Reset failed";
-      Toast.show({ type: "error", text1: message });
+      // Extract error message - backend errors are already formatted
+      let errorMessage = "Password reset failed";
+      let errorTitle = "Reset Failed";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Format common error messages for better UX
+        if (errorMessage.toLowerCase().includes('invalid') || 
+            errorMessage.toLowerCase().includes('incorrect')) {
+          errorTitle = "Invalid Code";
+          errorMessage = "The reset code is invalid or expired. Please request a new one.";
+        } else if (errorMessage.toLowerCase().includes('expired')) {
+          errorTitle = "Code Expired";
+          errorMessage = "This reset code has expired. Please request a new one.";
+        } else if (errorMessage.toLowerCase().includes('password') && 
+                   (errorMessage.toLowerCase().includes('weak') || errorMessage.toLowerCase().includes('short'))) {
+          errorTitle = "Weak Password";
+          errorMessage = "Password is too weak. Please choose a stronger password (at least 8 characters).";
+        } else if (errorMessage.toLowerCase().includes('validation') || 
+                   errorMessage.toLowerCase().includes('required')) {
+          errorTitle = "Validation Error";
+          errorMessage = "Please fill all required fields correctly.";
+        } else if (errorMessage.includes('Network request failed') || errorMessage.includes('fetch')) {
+          errorTitle = "Connection Error";
+          errorMessage = "Cannot connect to server. Please check your internet connection and try again.";
+        }
+      }
+      
+      Toast.show({ 
+        type: "error", 
+        text1: errorTitle,
+        text2: errorMessage,
+        visibilityTime: 5000
+      });
     } finally {
       setIsLoading(false);
     }

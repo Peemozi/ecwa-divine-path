@@ -11,7 +11,7 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Palette, Radii, Shadow, Spacing } from "@/constants/theme";
-import { authApi, setTokens, userApi } from "@/src/lib/api";
+import { authApi, setTokens, userApi, clearAllUserData } from "@/src/lib/api";
 import { useAuthFlow } from "@/src/lib/auth-flow-state";
 
 export default function VerifyToken() {
@@ -37,6 +37,9 @@ export default function VerifyToken() {
 
     setIsLoading(true);
     try {
+      // Clear any old user data first to prevent data from previous user showing
+      await clearAllUserData();
+      
       const response = await authApi.verifyLoginCode(email, token);
       await setTokens(response.access_token, response.refresh_token);
       await AsyncStorage.multiSet([
@@ -58,7 +61,7 @@ export default function VerifyToken() {
             dash.user.subscription.hasAccess ? "true" : "false"
           );
         }
-      } catch (dashError) {
+      } catch (_dashError) {
         // Dashboard preload failed - continue with login
       }
 
@@ -66,8 +69,33 @@ export default function VerifyToken() {
       resetAuthFlow();
       router.replace("/(tabs)/dashboard");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Verification failed";
-      Toast.show({ type: "error", text1: message });
+      // Extract error message - backend errors are already formatted
+      let errorMessage = "Verification failed";
+      let errorTitle = "Verification Failed";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Format common error messages for better UX
+        if (errorMessage.toLowerCase().includes('invalid') || 
+            errorMessage.toLowerCase().includes('incorrect')) {
+          errorTitle = "Invalid Code";
+          errorMessage = "The verification code is incorrect. Please check and try again.";
+        } else if (errorMessage.toLowerCase().includes('expired')) {
+          errorTitle = "Code Expired";
+          errorMessage = "This verification code has expired. Please request a new one.";
+        } else if (errorMessage.includes('Network request failed') || errorMessage.includes('fetch')) {
+          errorTitle = "Connection Error";
+          errorMessage = "Cannot connect to server. Please check your internet connection and try again.";
+        }
+      }
+      
+      Toast.show({ 
+        type: "error", 
+        text1: errorTitle,
+        text2: errorMessage,
+        visibilityTime: 5000
+      });
     } finally {
       setIsLoading(false);
     }
